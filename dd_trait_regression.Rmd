@@ -53,14 +53,8 @@ dd_trait_data$Loneliness_avg_ctr = mean_center(dd_trait_data$Loneliness_avg)
 
 dd_trait_data$PSS_avg_ctr = mean_center(dd_trait_data$PSS_avg)
 
-# [SKIP] negative events, person-centered
-dd_trait_data$NumDrmTld_neg_pctr[dd_trait_data$Val_EC==-1] = dd_trait_data$NumDrmTld[dd_trait_data$Val_EC==-1]-ave(dd_trait_data$NumDrmTld[dd_trait_data$Val_EC==-1], dd_trait_data$ID[dd_trait_data$Val_EC==-1])
-
 # emotion rating for negative events, person-centered
 dd_trait_data$EmoRating_neg_pctr[dd_trait_data$Val_EC==-1] = dd_trait_data$EmoRating[dd_trait_data$Val_EC==-1] - ave(dd_trait_data$EmoRating[dd_trait_data$Val_EC==-1], dd_trait_data$ID[dd_trait_data$Val_EC==-1], FUN=function(x) mean(x, na.rm=TRUE))
-
-# [SKIP] emotion rating for negative events, person-z-scored
-dd_trait_data$EmoRating_neg_pz[dd_trait_data$Val_EC==-1] =  ave(dd_trait_data$EmoRating[dd_trait_data$Val_EC==-1], dd_trait_data$ID[dd_trait_data$Val_EC==-1], FUN=function(x) scale(x))
 
 ```
 
