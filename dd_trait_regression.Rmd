@@ -2,25 +2,13 @@
 title: "Social_Networks_Project"
 author: "Natalie Samuels"
 date created: "9/5/2018"
-last edited: "9/26/2018"
+last edited: "9/29/2018"
 output: html_document
 ---
 
 Read in combined dd_trait csv
 ```{r}
 dd_trait_data = read.csv(file='dd_trait_nsamuels.csv')
-```
-
-
-[SKIP] Create matrix with relevant regressors
-```{r}
-regressors = as.matrix(dd_trait_data[, c('CESD_avg', 'STAI_MEAN', 'PSS_avg', 'Loneliness_avg', 'BIS_avg', 'BAS_drive', 'NPI15_avg', 'BFI_a', 'BFI_e', 'Gender_bin', 'MCSDS_avg', 'NTB_avg', 'IRQ_TN', 'IRQ_EN', 'IRQ_TP', 'IRQ_EP', 'IRI_EC')])
-```
-
-
-[SKIP] Create covariation marix
-```{r}
-cor(regressors)
 ```
 
 
