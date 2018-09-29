@@ -1,0 +1,159 @@
+---
+title: "Social_Networks_Project"
+author: "Natalie Samuels"
+date created: "9/5/2018"
+last edited: "9/26/2018"
+output: html_document
+---
+
+Read in combined dd_trait csv
+```{r}
+dd_trait_data = read.csv(file='dd_trait_nsamuels.csv')
+```
+
+
+[SKIP] Create matrix with relevant regressors
+```{r}
+regressors = as.matrix(dd_trait_data[, c('CESD_avg', 'STAI_MEAN', 'PSS_avg', 'Loneliness_avg', 'BIS_avg', 'BAS_drive', 'NPI15_avg', 'BFI_a', 'BFI_e', 'Gender_bin', 'MCSDS_avg', 'NTB_avg', 'IRQ_TN', 'IRQ_EN', 'IRQ_TP', 'IRQ_EP', 'IRI_EC')])
+```
+
+
+[SKIP] Create covariation marix
+```{r}
+cor(regressors)
+```
+
+
+Create dummy variables for event categories
+```{r}
+# change category variables from numeric to named factors
+dd_trait_data$Category[dd_trait_data$Category == 1] = 'Soc_Rel'
+dd_trait_data$Category[dd_trait_data$Category == 2] = 'School'
+dd_trait_data$Category[dd_trait_data$Category == 3] = 'Health'
+dd_trait_data$Category[dd_trait_data$Category == 4] = 'Fin'
+dd_trait_data$Category[dd_trait_data$Category == 5] = 'Job'
+dd_trait_data$Category[dd_trait_data$Category == 6] = 'Other'
+dd_trait_data$Category = as.factor(dd_trait_data$Category)
+
+# create dummy variables for event categories (indicator == School)
+dd_trait_data$Cat_Soc_Rel = ifelse(dd_trait_data$Category == 'Soc_Rel', 1, 0)
+dd_trait_data$Cat_Health = ifelse(dd_trait_data$Category == 'Health', 1, 0)
+dd_trait_data$Cat_Fin = ifelse(dd_trait_data$Category == 'Fin', 1, 0)
+dd_trait_data$Cat_Job = ifelse(dd_trait_data$Category == 'Job', 1, 0)
+dd_trait_data$Cat_Other = ifelse(dd_trait_data$Category == 'Other', 1, 0)
+```
+
+
+Create effect column for event valence
+```{r}
+dd_trait_data$Val_EC = ifelse(dd_trait_data$Valence == 'Pos', 1, -1)
+```
+
+
+Mean-center EmoRating, STAI_MEAN, CESD_avg, Loneliness_avg, and PSS_avg
+```{r}
+mean_center = function(column)
+{
+  scale(column, scale=FALSE)
+}
+
+dd_trait_data$STAI_MEAN_ctr = mean_center(dd_trait_data$STAI_MEAN)
+
+dd_trait_data$CESD_avg_ctr = mean_center(dd_trait_data$CESD_avg)
+
+dd_trait_data$Loneliness_avg_ctr = mean_center(dd_trait_data$Loneliness_avg)
+
+dd_trait_data$PSS_avg_ctr = mean_center(dd_trait_data$PSS_avg)
+
+# [SKIP] negative events, person-centered
+dd_trait_data$NumDrmTld_neg_pctr[dd_trait_data$Val_EC==-1] = dd_trait_data$NumDrmTld[dd_trait_data$Val_EC==-1]-ave(dd_trait_data$NumDrmTld[dd_trait_data$Val_EC==-1], dd_trait_data$ID[dd_trait_data$Val_EC==-1])
+
+# emotion rating for negative events, person-centered
+dd_trait_data$EmoRating_neg_pctr[dd_trait_data$Val_EC==-1] = dd_trait_data$EmoRating[dd_trait_data$Val_EC==-1] - ave(dd_trait_data$EmoRating[dd_trait_data$Val_EC==-1], dd_trait_data$ID[dd_trait_data$Val_EC==-1], FUN=function(x) mean(x, na.rm=TRUE))
+
+# [SKIP] emotion rating for negative events, person-z-scored
+dd_trait_data$EmoRating_neg_pz[dd_trait_data$Val_EC==-1] =  ave(dd_trait_data$EmoRating[dd_trait_data$Val_EC==-1], dd_trait_data$ID[dd_trait_data$Val_EC==-1], FUN=function(x) scale(x))
+
+```
+
+
+[SKIP] Subset dd_trait_data for negative events
+```{r}
+library(dplyr)
+neg_dd_trait_data = select(filter(dd_trait_data, Valence == 'Neg'), everything())
+```
+
+
+Regression analysis for event qualities (EmoRating & Cat), predicting whether student seeks help.
+
+Original model:
+ev_qual_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*Cat_Soc_Rel + EmoRating_neg_pctr*Cat_Health + EmoRating_neg_pctr*Cat_Fin + EmoRating_neg_pctr*Cat_Job + EmoRating_neg_pctr*Cat_Other + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + Cat_Soc_Rel | ID/Dorm) + (0 + EmoRating_neg_pctr:Cat_Soc_Rel | ID/Dorm) + (0 + Cat_Health | ID/Dorm) + (0 + EmoRating_neg_pctr:Cat_Health | ID/Dorm) +  (0 + Cat_Fin | ID/Dorm) + (0 + EmoRating_neg_pctr:Cat_Fin | ID/Dorm) + (0 + Cat_Job | ID/Dorm) + (0 + EmoRating_neg_pctr:Cat_Job | ID/Dorm) +  (0 + Cat_Other | ID/Dorm) + (0 + EmoRating_neg_pctr:Cat_Other | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+```{r}
+library(lme4)
+ev_qual_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*Cat_Soc_Rel + EmoRating_neg_pctr*Cat_Health + EmoRating_neg_pctr*Cat_Fin + EmoRating_neg_pctr*Cat_Job + EmoRating_neg_pctr*Cat_Other + (0 + EmoRating_neg_pctr:Cat_Fin | ID), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+```
+
+
+Regression analysis for trait anxiety and EmoRating, predicting whether student seeks help.
+
+Original model:
+anxiety_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*STAI_MEAN_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + STAI_MEAN_ctr | ID/Dorm) + (0 + EmoRating_neg_pctr:STAI_MEAN_ctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+```{r}
+anxiety_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*STAI_MEAN_ctr + (1 | Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + STAI_MEAN_ctr | ID), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+```
+
+
+Regression analysis for trait depression and EmoRating, predicting whether student seeks help.
+
+Original model:
+depression_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*CESD_avg_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + CESD_avg_ctr | ID/Dorm) + (0 + EmoRating_neg_pctr:CESD_avg_ctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+```{r}
+depression_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*CESD_avg_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+```
+
+
+Regression analysis for trait lonliness and EmoRating, predicting whether student seeks help.
+
+Original model:
+lonliness_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*Loneliness_avg_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + Loneliness_avg_ctr | ID/Dorm) + (0 + EmoRating_neg_pctr:Loneliness_avg_ctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+```{r}
+lonliness_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*Loneliness_avg_ctr + (1 | ID/Dorm) + (0 + Loneliness_avg_ctr | ID/Dorm) + (0 + EmoRating_neg_pctr:Loneliness_avg_ctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+```
+
+
+Regression analysis for perceived stress and EmoRating, predicting whether student seeks help.
+
+Original model:
+stress_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*PSS_avg_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + PSS_avg_ctr | ID/Dorm) + (0 + EmoRating_neg_pctr:PSS_avg_ctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+```{r}
+stress_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*PSS_avg_ctr + (1 | ID), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+```
+
+
+TAKEAWAYS 9/24:
+1) lonliness and event category matter for whether people disclose NegEv
+  a) lonliness correlated with depression, anxiety (although neither depression nor anxiety predicts GotHelp)
+  Categories: Social Relationships*** (-), Health** (-), Job* (-), Other*** (-)
+  Lonliness** (-)
+2) emotion rating matters somewhat for whether people disclose NegEv
+  a) how to report?
+
+
+NEXT STEPS:
+1) Figure out how to predict continuous DV (linear regression?) for NumDrmTld
+  a) test TOIs on NumDrmTld
+2) What's the emotion rating associated with each event category?
+3) **Do students high in lonliness feel better after disclosing events?
+  b) Compared to students who feel less lonlely?
+  c) **How do lonely students fare at the end of the quarter?
+
