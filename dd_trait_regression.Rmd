@@ -61,9 +61,6 @@ dd_trait_data$EmoRating_neg_pctr[dd_trait_data$Val_EC==-1] = dd_trait_data$EmoRa
 
 Regression analysis for event qualities (EmoRating & Cat), predicting whether student seeks help.
 
-Original model:
-ev_qual_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*Cat_Soc_Rel + EmoRating_neg_pctr*Cat_Health + EmoRating_neg_pctr*Cat_Fin + EmoRating_neg_pctr*Cat_Job + EmoRating_neg_pctr*Cat_Other + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + Cat_Soc_Rel | ID/Dorm) + (0 + EmoRating_neg_pctr:Cat_Soc_Rel | ID/Dorm) + (0 + Cat_Health | ID/Dorm) + (0 + EmoRating_neg_pctr:Cat_Health | ID/Dorm) +  (0 + Cat_Fin | ID/Dorm) + (0 + EmoRating_neg_pctr:Cat_Fin | ID/Dorm) + (0 + Cat_Job | ID/Dorm) + (0 + EmoRating_neg_pctr:Cat_Job | ID/Dorm) +  (0 + Cat_Other | ID/Dorm) + (0 + EmoRating_neg_pctr:Cat_Other | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
-
 ```{r}
 library(lme4)
 ev_qual_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*Cat_Soc_Rel + EmoRating_neg_pctr*Cat_Health + EmoRating_neg_pctr*Cat_Fin + EmoRating_neg_pctr*Cat_Job + EmoRating_neg_pctr*Cat_Other + (0 + EmoRating_neg_pctr:Cat_Fin | ID), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
@@ -73,9 +70,6 @@ ev_qual_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*Cat_Soc_Rel + EmoRat
 
 Regression analysis for trait anxiety and EmoRating, predicting whether student seeks help.
 
-Original model:
-anxiety_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*STAI_MEAN_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + STAI_MEAN_ctr | ID/Dorm) + (0 + EmoRating_neg_pctr:STAI_MEAN_ctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
-
 ```{r}
 anxiety_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*STAI_MEAN_ctr + (1 | Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + STAI_MEAN_ctr | ID), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
 
@@ -83,9 +77,6 @@ anxiety_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*STAI_MEAN_ctr + (1 |
 
 
 Regression analysis for trait depression and EmoRating, predicting whether student seeks help.
-
-Original model:
-depression_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*CESD_avg_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + CESD_avg_ctr | ID/Dorm) + (0 + EmoRating_neg_pctr:CESD_avg_ctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
 
 ```{r}
 depression_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*CESD_avg_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
@@ -95,9 +86,6 @@ depression_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*CESD_avg_ctr + (1
 
 Regression analysis for trait lonliness and EmoRating, predicting whether student seeks help.
 
-Original model:
-lonliness_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*Loneliness_avg_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + Loneliness_avg_ctr | ID/Dorm) + (0 + EmoRating_neg_pctr:Loneliness_avg_ctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
-
 ```{r}
 lonliness_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*Loneliness_avg_ctr + (1 | ID/Dorm) + (0 + Loneliness_avg_ctr | ID/Dorm) + (0 + EmoRating_neg_pctr:Loneliness_avg_ctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
 
@@ -105,9 +93,6 @@ lonliness_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*Loneliness_avg_ctr
 
 
 Regression analysis for perceived stress and EmoRating, predicting whether student seeks help.
-
-Original model:
-stress_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*PSS_avg_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pctr | ID/Dorm) + (0 + PSS_avg_ctr | ID/Dorm) + (0 + EmoRating_neg_pctr:PSS_avg_ctr | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
 
 ```{r}
 stress_got_help_model = glmer(GotHelp ~ EmoRating_neg_pctr*PSS_avg_ctr + (1 | ID), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
