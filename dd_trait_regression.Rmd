@@ -59,13 +59,6 @@ dd_trait_data$EmoRating_neg_pctr[dd_trait_data$Val_EC==-1] = dd_trait_data$EmoRa
 ```
 
 
-[SKIP] Subset dd_trait_data for negative events
-```{r}
-library(dplyr)
-neg_dd_trait_data = select(filter(dd_trait_data, Valence == 'Neg'), everything())
-```
-
-
 Regression analysis for event qualities (EmoRating & Cat), predicting whether student seeks help.
 
 Original model:
