@@ -2,11 +2,11 @@
     File name: dd_trait_merge.py
     Authors: Natalie Samuels & Jack Jester-Weinstein
     Date created: 8/23/2018
-    Date last modified: 9/5/2018
+    Date last modified: 10/08/2018
     Python Version: 3.7
     Description: A data pre-processing script that cleans and merges
-    daily diary and trait data from the SSNL Social Networks project
-    in preparation for analysis.
+    daily diary, network, and trait data from the SSNL Social Networks
+    project in preparation for analysis.
 
 """
 
@@ -119,9 +119,11 @@ def main():
     args = sys.argv[1:]
     dd_data_filepath = args[0]
     trait_data_filepath = args[1]
+    network_data_filepath = args[2]
 
     dd_data = pd.read_csv(dd_data_filepath)
     trait_data = pd.read_csv(trait_data_filepath)
+    network_data = pd.read_csv(network_data_filepath)
 
     # prepare daily diary data for merge
     dd_data_clean = clean_dd(dd_data)
@@ -131,7 +133,8 @@ def main():
     trait_data_final = clean_trait(trait_data)
 
     dd_trait_data = pd.merge(dd_data_final, trait_data_final, on=['ID'])
-    dd_trait_data.to_csv(r'/Users/nsamuels/Library/Mobile Documents/com~apple~CloudDocs/Desktop/Social_Networks_Project/Data_Analysis/dd_trait_nsamuels.csv')
+    dd_trait_network_data = pd.merge(dd_trait_data, network_data, on=['ID'])
+    dd_trait_network_data.to_csv(r'/Users/nsamuels/Library/Mobile Documents/com~apple~CloudDocs/Desktop/Social_Networks_Project/Data_Analysis/dd_trait_nsamuels.csv')
 
 
 if __name__ == '__main__':
