@@ -1,2 +1,5 @@
 # R created files
 .Rhistory
+
+# Custom view settings for Finder
+.DS_Store
