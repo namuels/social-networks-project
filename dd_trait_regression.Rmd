@@ -9,6 +9,13 @@ output: html_document
 
 ```{r echo=FALSE}
 # Read in combined dd_trait csv
+
+# Dorm Key:
+# 1 - Winter Trancos
+# 2 - Spring Rinconada
+# 3 - Fall Trancos
+# 4 - Fall Rinconada
+
 dd_trait_data = read.csv(file='dd_trait_nsamuels.csv')
 ```
 
