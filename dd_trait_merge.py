@@ -2,11 +2,17 @@
     File name: dd_trait_merge.py
     Authors: Natalie Samuels & Jack Jester-Weinstein
     Date created: 8/23/2018
-    Date last modified: 10/08/2018
+    Date last modified: 11/07/2018
     Python Version: 3.7
     Description: A data pre-processing script that cleans and merges
     daily diary, network, and trait data from the SSNL Social Networks
     project in preparation for analysis.
+
+    Dorm Key:
+    1 - Winter Trancos
+    2 - Spring Rinconada
+    3 - Fall Trancos
+    4 - Fall Rinconada
 
 """
 
