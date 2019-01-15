@@ -2,7 +2,7 @@
     File name: dd_trait_merge.py
     Authors: Natalie Samuels & Jack Jester-Weinstein
     Date created: 8/23/2018
-    Date last modified: 11/07/2018
+    Date last modified: 1/15/2018
     Python Version: 3.7
     Description: A data pre-processing script that cleans and merges
     daily diary, network, and trait data from the SSNL Social Networks
@@ -123,17 +123,20 @@ def clean_trait(trait_data):
 
 def main():
     args = sys.argv[1:]
-    dd_data_filepath = args[0]
-    trait_data_filepath = args[1]
-    network_data_filepath = args[2]
+    dd_event_data_filepath = args[0]
+    dd_emo_data_filepath = args[1]
+    trait_data_filepath = args[2]
+    network_data_filepath = args[3]
 
-    dd_data = pd.read_csv(dd_data_filepath)
+    dd_event_data = pd.read_csv(dd_event_data_filepath)
+    dd_emo_data = pd.read_csv(dd_emo_data_filepath)
     trait_data = pd.read_csv(trait_data_filepath)
     network_data = pd.read_csv(network_data_filepath)
 
     # prepare daily diary data for merge
-    dd_data_clean = clean_dd(dd_data)
-    dd_data_final = sum_drm(dd_data_clean)
+    dd_event_data_clean = clean_dd(dd_event_data)
+    dd_event_data_final = sum_drm(dd_event_data_clean)
+    dd_data_final = pd.merge(dd_event_data_final, dd_emo_data, on=['ID', 'Dorm', 'Day'])
 
     # prepare trait data for merge
     trait_data_final = clean_trait(trait_data)
