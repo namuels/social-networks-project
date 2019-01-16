@@ -1,22 +1,37 @@
 ---
-title: "Social_Networks_Project"
+title: "Social Networks Project"
 author: "Natalie Samuels"
 date created: "9/5/2018"
-last edited: "10/24/2018"
+last edited: "1/16/2019"
 output: html_document
 ---
-# Trait and situational predictors of self-disclosure in college freshmen.
+# Exploring the antecedents and utility of self-disclosure in college freshmen.
 
-```{r echo=FALSE}
-# Read in combined dd_trait csv
+## Abstract
+Adjusting to college is at once an exciting and stress-inducing process. One potentially helpful action students can take under stress is to disclose negative feelings to peers, thus enabling interpersonal emotion regulation and social support. However, students vary in their tendency to disclose negative feelings. Through trait data, social network nominations, and experience-sampling data, we explore trait and situational factors that influence students’ likelihood of disclosing stressful events to dorm-mates. For ten days throughout their first quarter on campus, students reported up to three daily stressors, along with the emotional intensity and category for each, and to whom, if anyone, each stressor was disclosed. Academic stressors were most likely to be disclosed and social stressors least likely. Additionally, stressors higher in emotional intensity were more likely to be disclosed. Whereas students experiencing more depression, anxiety, and perceived stress were equally as likely as their peers to disclose negative events, students experiencing greater feelings of loneliness were significantly less likely to engage in self-disclosure. Interestingly, self-disclosure was not found to influence daily changes in mood, affect, or stress. Future research will aim to assess the utility of disclosure over longer timescales. Findings from this exploratory analysis can help inform whether self-disclosure should be encouraged as a potential avenue to buffering stress and improving well-being during the transition to college.
+
+
+## Intro
+Coming soon!
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# Read in combined dd_trait csv and remove rows where Category is NA
 
 # Dorm Key:
 # 1 - Winter Trancos
 # 2 - Spring Rinconada
 # 3 - Fall Trancos
 # 4 - Fall Rinconada
+library(lme4)
+library(tidyverse)
 
 dd_trait_data = read.csv(file='dd_trait_nsamuels.csv')
+
+dd_trait_data = dd_trait_data %>% 
+  filter(! is.na(Category))
+
+dd_trait_data$GotHelp = as.factor(dd_trait_data$GotHelp)
+
 ```
 
 
@@ -48,10 +63,10 @@ dd_trait_data$Val_EC = ifelse(dd_trait_data$Valence == 'Pos', 1, -1)
 
 
 ```{r echo=FALSE}
-# Mean-center EmoRating, STAI_MEAN, CESD_avg, Loneliness_avg, PSS_avg, and CloseFrd_Total
+# Mean-center EmoRating, STAI_MEAN, CESD_avg, Loneliness_avg (also z-scored), PSS_avg, and CloseFrd_Total
 mean_center = function(column)
 {
-  scale(column, scale=FALSE)
+  as.vector(scale(column, scale=FALSE))
 }
 
 dd_trait_data$STAI_MEAN_ctr = mean_center(dd_trait_data$STAI_MEAN)
@@ -59,13 +74,26 @@ dd_trait_data$STAI_MEAN_ctr = mean_center(dd_trait_data$STAI_MEAN)
 dd_trait_data$CESD_avg_ctr = mean_center(dd_trait_data$CESD_avg)
 
 dd_trait_data$Loneliness_avg_ctr = mean_center(dd_trait_data$Loneliness_avg)
+dd_trait_data$Loneliness_avg_z = as.vector(scale(dd_trait_data$Loneliness_avg))
 
 dd_trait_data$PSS_avg_ctr = mean_center(dd_trait_data$PSS_avg)
 
 dd_trait_data$CloseFrd_Total_ctr = mean_center(dd_trait_data$CloseFrd_Total)
+```
 
-# emotion rating for negative events, person-z-scored
-dd_trait_data$EmoRating_neg_pz[dd_trait_data$Val_EC == -1] = ave(dd_trait_data$EmoRating[dd_trait_data$Val_EC==-1], dd_trait_data$ID[dd_trait_data$Val_EC == -1], FUN=function(x) scale(x))
+
+```{r echo=FALSE}
+# subsetting dd_trait_data into pos and neg
+pos_dd_trait_data = subset(dd_trait_data, (Val_EC == 1))
+neg_dd_trait_data = subset(dd_trait_data, (Val_EC == -1))
+
+```
+
+
+```{r echo=FALSE}
+# emotion rating for negative and positive events, person-z-scored
+neg_dd_trait_data$EmoRating_pz = ave(neg_dd_trait_data$EmoRating, neg_dd_trait_data$ID, FUN=function(x) scale(x))
+pos_dd_trait_data$EmoRating_pz = ave(pos_dd_trait_data$EmoRating, pos_dd_trait_data$ID, FUN=function(x) scale(x))
 
 ```
 
@@ -76,115 +104,382 @@ trait_data = subset(dd_trait_data, (Day == 1 & EventNum == 1 & Valence == 'Pos')
 ```
 
 
-```{r echo=FALSE, warning=FALSE}
-library(lme4) 
+```{r echo=FALSE}
+# subsetting neg_dd_trait_data to get Fall quarter data only
+fall_neg_dd_trait_data = neg_dd_trait_data %>%
+  filter(Dorm == 3 | Dorm == 4)
 ```
 
 
-### Regression analysis for event qualities (EmoRating & Cat), predicting whether student seeks help.
-Students are most likely to disclose academic stressors to their peers. They are least likely to disclose financial stressors, although this category was not a significant predictor. Students are slightly less likely than chance to disclose social and work-related stressors — these categories were significant predictors. Students are also more likely to disclose stressors with higher emotion ratings, unless the stressor is work-related.
+## What types of stress do students experience?
+```{r echo=FALSE}
+# setting default plot theme and text size
+theme_set(
+  theme_classic() + 
+    theme(text = element_text(size=14))
+)
 
-```{r}
-ev_qual_got_help_model = glmer(GotHelp ~ EmoRating_neg_pz*Cat_Soc_Rel + EmoRating_neg_pz*Cat_Health + EmoRating_neg_pz*Cat_Fin + EmoRating_neg_pz*Cat_Job + EmoRating_neg_pz*Cat_Other + (1 | ID) + (0 + EmoRating_neg_pz:Cat_Fin | ID/Dorm) + (0 + Cat_Other | Day), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+# creating summary dataframe for negative events (category)
+fall_neg_category_totals = fall_neg_dd_trait_data %>%
+  group_by(Category, GotHelp) %>%
+  summarise(count = n())
 
-summary(ev_qual_got_help_model)
-
-```
-
-
-### Regression analysis for trait lonliness and EmoRating, predicting whether student seeks help.
-Students who experience more loneliness are less likely than their peers to disclose stressful events. Loneliness remains a significant predictor of disclosure even when controlling for theh objective number of close friends a student has in their dorm. Having more close friends in their dorm does slightly increase the likelihood that a student will disclose a stressor.
-
-```{r}
-loneliness_got_help_model = glmer(GotHelp ~ EmoRating_neg_pz*Loneliness_avg_ctr + CloseFrd_Total_ctr*Loneliness_avg_ctr + (1 | ID/Dorm)  + (0 + EmoRating_neg_pz | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
-
-summary(loneliness_got_help_model)
-
-```
-
-
-### Correlations between loneliness, number of nominations, and "vulnerability ratio."
-Each student was given a "vulnerability ratio," calculated by dividing the number of dorm-mates a student nominates as "providing support during difficult times" by the total number of dorm-mates a student nominates as "close friends." Although this "vulnerability ratio" does not correlate with loneliness, the individual nomination totals do. Unsurprisingly, students who nominate more dorm-mates as "close friends" report experiencing slightly less loneliness, as do students who nominate more dorm-mates as "providing support during difficult times". These two nomination totals are moderately positiviely correlated across students.
-```{r}
-
-
-cor.test(trait_data$Loneliness_avg, trait_data$Vulnerability_Ratio) 
-
-cor.test(trait_data$Loneliness_avg, trait_data$CloseFrd_Total)
-
-cor.test(trait_data$Loneliness_avg, trait_data$NegEmoSupp_Total)
-
-cor.test(trait_data$CloseFrd_Total, trait_data$NegEmoSupp_Total)
+# plotting reported and disclosed negative events by category
+ggplot(data = fall_neg_category_totals, 
+       mapping = aes(x=Category, y=count, group=GotHelp, fill=GotHelp)) + 
+  geom_bar(stat = "identity") + 
+  ggtitle("Reported Negative Events by Category") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  # rename x-axis variables
+  scale_x_discrete(labels=c("Fin" = "Financial", "Job" = "Work-related", "School" = "Academic", "Soc_Rel" = "Social")) + 
+  ylab("Count") + 
+  # edit legend labels
+  scale_fill_discrete(name="Disclosed?",
+                         labels=c("No", "Yes"))
 
 ```
 
 
-### Regression analysis for trait anxiety and EmoRating, predicting whether student seeks help.
-Anxiety is not a significant predictor of self-disclosure.
-```{r}
-anxiety_got_help_model = glmer(GotHelp ~ EmoRating_neg_pz*STAI_MEAN_ctr + (1 | ID/Dorm)  + (0 + EmoRating_neg_pz | ID), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+## How emotionally intense are the stressors students experience?
+```{r echo=FALSE}
+# creating summary dataframe for negative events (emotion rating)
+fall_neg_emo_rating_totals = fall_neg_dd_trait_data %>% 
+  filter(! is.na(EmoRating)) %>% 
+  group_by(EmoRating, GotHelp) %>%
+  summarise(count = n())
 
-summary(anxiety_got_help_model)
-
-```
-
-### Correlation between anxiety and loneliness.
-Anxiety and loneliness are moderately positively correlated.
-```{r}
-cor.test(trait_data$Loneliness_avg, trait_data$STAI_MEAN)
-
-```
-
-
-### Regression analysis for trait depression and EmoRating, predicting whether student seeks help.
-Depression is not a significant predictor of self-disclosure.
-```{r}
-depression_got_help_model = glmer(GotHelp ~ EmoRating_neg_pz*CESD_avg_ctr + (1 | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
-
-summary(depression_got_help_model)
-
-```
-
-### Correlation between depression and loneliness.
-Depression and loneliness are strongly positively correlated.
-```{r}
-cor.test(trait_data$Loneliness_avg, trait_data$CESD_avg)
-
+# plotting reported and disclosed negative events by emotion rating
+ggplot(data = fall_neg_emo_rating_totals, 
+       mapping = aes(x=EmoRating, y=count, group=GotHelp, fill=GotHelp)) + 
+  geom_bar(stat = "identity") + 
+  ggtitle("Reported Negative Events by Emotion Rating") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  # rename x-axis variables
+  xlab("Emotion Rating") + 
+  scale_x_discrete(limits=c(1, 2, 3, 4, 5, 6, 7)) + 
+  ylab("Count") + 
+  ylim(0, 300) + 
+  # edit legend labels
+  scale_fill_discrete(name="Disclosed?",
+                         labels=c("No", "Yes"))
 ```
 
 
-### Regression analysis for perceived stress and EmoRating, predicting whether student seeks help.
-Perceived stress is not a significant predictor of self-disclosure.
-```{r}
-stress_got_help_model = glmer(GotHelp ~ EmoRating_neg_pz*PSS_avg_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pz | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+## How does the quality of a stressor influence students' likelihood of disclosure?
+```{r, echo=FALSE}
+# function to convert logit to probability
+logit_to_prob = function(logit) 
+{
+  odds = exp(logit)
+  prob = odds / (1 + odds)
+  return(prob)
+}
+```
 
-summary(stress_got_help_model)
+
+```{r, echo=FALSE, warning=FALSE}
+# model predicting GotHelp logit via negative event qualities
+ev_qual_got_help_model = glmer(GotHelp ~ EmoRating_pz*Cat_Soc_Rel + EmoRating_pz*Cat_Health + EmoRating_pz*Cat_Fin + EmoRating_pz*Cat_Job + EmoRating_pz*Cat_Other + (1 | ID/Day) + (0 + Cat_Job | Dorm) +  (0 + Cat_Other | ID), data=fall_neg_dd_trait_data, family=binomial, control=glmerControl(optimizer='bobyqa'), na.action=na.exclude)
+
+# add logit to fall negative events dataframe
+fall_neg_dd_trait_data$ev_qual_got_help_logit = predict(ev_qual_got_help_model)
+
+# convert logit to probability
+fall_neg_dd_trait_data$ev_qual_got_help_prob = logit_to_prob(fall_neg_dd_trait_data$ev_qual_got_help_logit)
+
+# plotting probability of disclosing negative events by category
+ggplot(data = fall_neg_dd_trait_data, 
+       mapping = aes(x=Category, y=ev_qual_got_help_prob)) + 
+  # add chance line
+  geom_hline(yintercept = 0.5, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.1, height = 0)) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               geom = "linerange") + 
+  stat_summary(fun.y = "mean",
+               geom = "point",
+               shape = 23,
+               size = 2.5,
+               fill = "blue",
+               color = "black") +
+  ggtitle("Probability of Diclosure by Category") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  # rename x-axis variables
+  scale_x_discrete(labels=c("Fin" = "Financial", "Job" = "Work-related", "School" = "Academic", "Soc_Rel" = "Social")) + 
+  ylab("Probability") + 
+  # rescale y-axis
+  scale_y_continuous(limits = c(0, 1))
+
+# plotting probability of disclosing negative events by emotion rating
+ggplot(data = fall_neg_dd_trait_data, 
+       mapping = aes(x=EmoRating, y=ev_qual_got_help_prob)) + 
+  # add chance line
+  geom_hline(yintercept = 0.5, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.1, height = 0)) + 
+  stat_summary(fun.data = "mean_cl_boot",
+               geom = "linerange") + 
+  stat_summary(fun.y = "mean",
+               geom = "point",
+               shape = 23,
+               size = 2.5,
+               fill = "blue",
+               color = "black") +
+  ggtitle("Probability of Diclosure by Emotion Rating") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  # rename x-axis variables
+  scale_x_discrete(limits=c(1, 2, 3, 4, 5, 6, 7)) + 
+  ylab("Probability") + 
+  # rescale y-axis
+  scale_y_continuous(limits = c(0, 1))
+
+# plotting probability of disclosing negative events by emotion rating (person z-scored)
+ggplot(data = fall_neg_dd_trait_data, 
+       mapping = aes(x=EmoRating_pz, y=ev_qual_got_help_prob)) + 
+  # add chance line
+  geom_hline(yintercept = 0.5, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.1, height = 0)) + 
+  geom_smooth(method = "glm", 
+              method.args = list(family = "binomial"), 
+              se = TRUE) + 
+  ggtitle("Emotion Rating Predicts Probability of Diclosure") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  # rename x-axis variables
+  xlab("Emotion Rating") + 
+  ylab("Probability") + 
+  # rescale y-axis
+  scale_y_continuous(limits = c(0, 1))
 
 ```
 
-### Correlation between perceived stress and loneliness.
-Perceived stress and loneliness are moderately positively correlated.
-```{r}
-cor.test(trait_data$Loneliness_avg, trait_data$PSS_avg)
+Students are most likely to disclose academic stressors to their peers and are slightly more likely than chance to disclose health-related stressors. Interestingly, students are slightly less likely than chance to disclose social stressors. Students are also more likely to disclose stressors that are higher in emotional intensity.
+
+
+## How do students' individual differences influence their likelihood of disclosure?
+```{r, echo=FALSE, warning=FALSE}
+loneliness_got_help_model = glmer(GotHelp ~ EmoRating_pz*Loneliness_avg_ctr + CloseFrd_Total_ctr*Loneliness_avg_ctr + (1 | ID), data=fall_neg_dd_trait_data, family=binomial, control=glmerControl(optimizer='bobyqa'), na.action=na.exclude)
+
+# add logit to fall negative events dataframe
+fall_neg_dd_trait_data$loneliness_got_help_logit = predict(loneliness_got_help_model)
+
+# convert logit to probability
+fall_neg_dd_trait_data$loneliness_got_help_prob = logit_to_prob(fall_neg_dd_trait_data$loneliness_got_help_logit)
+
+# plotting probability of disclosing negative events by loneliness
+ggplot(data = fall_neg_dd_trait_data, 
+       mapping = aes(x=Loneliness_avg_z, y=loneliness_got_help_prob)) + 
+  # add chance line
+  geom_hline(yintercept = 0.5, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.1, height = 0)) + 
+  geom_smooth(method = "glm", 
+              method.args = list(family = "binomial"), 
+              se = TRUE) + 
+  ggtitle("Perceived Loneliness Predicts Probability of Diclosure") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  # rename x-axis variables
+  xlab("Perceived Loneliness") + 
+  ylab("Probability") + 
+  # rescale y-axis
+  scale_y_continuous(limits = c(0, 1))
 
 ```
 
+Students who experience more loneliness are less likely than their peers to disclose stressful events, regardless of the objective number of friendships the student reports. Trait anxiety, depression, and perceived stress were also tested in separate models, but none emerged as significant predictors of disclosure. 
+
+
+```{r echo=FALSE}
+# create reverse-scoring functions
+
+# reverse-scoring loneliness
+fun.reverse_lonely = function(response) {
+  cleaned_reponse = 8 - response
+  return(cleaned_reponse)
+}
+
+# reverse-scoring perceived stress
+fun.reverse_stress = function(response) {
+  cleaned_reponse = 8 - response
+  return(cleaned_reponse)
+}
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+# prepare daily emotion data (person z-score)
+
+fall_neg_dd_trait_data = fall_neg_dd_trait_data %>% 
+  rowwise() %>% 
+  # average daily life satisfaction
+  mutate(LifSat_day_avg = mean(c(LifSat_1, LifSat_2, LifSat_3, LifSat_4, LifSat_5))) %>% 
+  # average daily loneliness
+  mutate_at(vars(Lonely_1, Lonely_3, Lonely_6), funs(fun.reverse_lonely(.))) %>% 
+  mutate(Lonely_day_avg = mean(c(Lonely_1, Lonely_2, Lonely_3, Lonely_4, Lonely_5, Lonely_6))) %>% 
+  # average daily positive emotion
+  mutate(PosAff_day_avg = mean(c(PosNegEmo_Happy, PosNegEmo_Enthusiastic, PosNegEmo_Joyful, PosNegEmo_Amused, PosNegEmo_Proud))) %>% 
+  # average daily negative emotion
+  mutate(NegAff_day_avg = mean(c(PosNegEmo_Guilty, PosNegEmo_Ashamed, PosNegEmo_Nervous, PosNegEmo_Angry, PosNegEmo_Sad))) %>% 
+  # average daily stress
+  mutate_at(vars(PSS_2, PSS_3), funs(fun.reverse_lonely(.))) %>% 
+  mutate(Stress_day_avg = mean(c(PSS_1, PSS_2, PSS_3, PSS_4))) %>% 
+  # person z-score daily emotion data
+  group_by(ID) %>% 
+  mutate_at(vars(LifSat_day_avg, Lonely_day_avg, PosAff_day_avg, NegAff_day_avg, Stress_day_avg), 
+            funs(pz = scale(.))) %>% 
+  select(-(LifSat_1:PSS_4))
+
+```
+
+
+## What is the utility of disclosing negative events to dorm-mates?
+```{r, echo=FALSE}
+# assessing the utility of disclosure
+
+# preparing daily diary data
+fall_neg_dd_trait_data_utility = fall_neg_dd_trait_data %>% 
+  # create effect column for GotHelp
+  mutate(GotHelp = ifelse(GotHelp == 1, 1, -1)) %>% 
+  # creating time-lagged daily emotion columns
+  group_by(ID) %>% 
+  mutate_at(vars(LifSat_day_avg_pz, Lonely_day_avg_pz, PosAff_day_avg_pz, NegAff_day_avg_pz, Stress_day_avg_pz), 
+            funs(next_day = lead(., order_by = ID))) %>% 
+  select(ID, GotHelp, LifSat_day_avg_pz, Lonely_day_avg_pz, PosAff_day_avg_pz, NegAff_day_avg_pz, Stress_day_avg_pz, 
+         LifSat_day_avg_pz_next_day, Lonely_day_avg_pz_next_day, PosAff_day_avg_pz_next_day, 
+         NegAff_day_avg_pz_next_day, Stress_day_avg_pz_next_day)
+
+# does disclosure predict next day satisfaction with day? [NO]
+utility_lifsat_model = lmer((LifSat_day_avg_pz_next_day - LifSat_day_avg_pz) ~ GotHelp + (1 | ID) + (0 + GotHelp|ID), data = fall_neg_dd_trait_data_utility)
+
+# does disclosure predict next day loneliness? [NO]
+utility_lonely_model = lmer((Lonely_day_avg_pz - Lonely_day_avg_pz_next_day) ~ GotHelp + (1 | ID) + (0 + GotHelp|ID), data = fall_neg_dd_trait_data_utility)
+
+# does disclosure predict next day positive affect? [NO]
+utility_PosAff_model = lmer((PosAff_day_avg_pz_next_day - PosAff_day_avg_pz) ~ GotHelp + (1 | ID) + (0 + GotHelp|ID), data = fall_neg_dd_trait_data_utility)
+
+# does disclosure predict next day negative affect? [NO]
+utility_NegAff_model = lmer((NegAff_day_avg_pz - NegAff_day_avg_pz_next_day) ~ GotHelp + (1 | ID) + (0 + GotHelp|ID), data = fall_neg_dd_trait_data_utility)
+
+# does disclosure predict next day stress? [NO]
+utility_stress_model = lmer(Stress_day_avg_pz - Stress_day_avg_pz_next_day ~ GotHelp + (1 | ID) + (0 + GotHelp|ID), data = fall_neg_dd_trait_data_utility)
+
+```
+
+Students' daily disclosure activity was used to predict satisfaction, loneliness, positive and negative affect, and stress the following day. Disclosing stress to a dorm-mate did not predict significant changes in these measures of well-being at the daily level. 
 
 ## Next Steps
-1) How do students who experience more loneliness feel after disclosing events?
-  a) Compared to students who experience less loneliness?
-2) Look at how loneliness relates to IRQ-T and IRQ-E
-  a) If IRQ-E is lower for lonely students, could there be a self-fulfilling mindset?
-3) How do lonely students think others feel after they disclose to them?
-  a) If worse than less lonely students, could this be a potential impedence to disclosure?
+* How does disclosure influence wellbeing over longer timescales (quarter, year, etc.)?
+* Do qualities of the support provider, such as empathy, influence the utility of disclosing negative events?
+* Why do lonely students disclose their stress less frequently?
+    + How do they benefit from disclosure vs. their less lonely peers?
+    + How do they perceive the impact of their disclosure on the support provider?
+    + How does their IRQ-E compare to their less lonely peers?
+* To what extent does IRQ-E operate as a self-fulfilling mindset?
 
 
 ```{r, echo=FALSE}
-#1) Figure out how to predict continuous DV (linear regression?) for NumDrmTld
-  #a) test TOIs on NumDrmTld
-#2) What's the emotion rating associated with each event category?
-#3) **Do students high in lonliness feel better after disclosing events?
-  #a) Compared to students who feel less lonlely?
-  #b) **How do lonely students fare at the end of the quarter?
+# 1) Look at how loneliness relates to IRQ-T and IRQ-E
+  # a) If IRQ-E is lower for lonely students, could there be a self-fulfilling mindset?
+# 2) **Do students high in lonliness feel better after disclosing events?
+  # a) Compared to students who feel less lonlely?
+  # b) **How do lonely students fare at the end of the quarter?
+# 3) How do lonely students think others feel after they disclose to them?
+  # a) If worse than less lonely students, could this be a potential impedence to disclosure?
+```
+
+
+```{r, echo=FALSE}
+# old notes:
+# Correlations between loneliness, number of nominations, and "vulnerability ratio."
+# Each student was given a "vulnerability ratio," calculated by dividing the number of dorm-mates a student nominates as "providing support during difficult times" by the total number of dorm-mates a student nominates as "close friends." Although this "vulnerability ratio" does not correlate with loneliness, the individual nomination totals do. Unsurprisingly, students who nominate more dorm-mates as "close friends" report experiencing slightly less loneliness, as do students who nominate more dorm-mates as "providing support during difficult times". These two nomination totals are moderately positiviely correlated across students.
+
+# cor.test(trait_data$Loneliness_avg, trait_data$Vulnerability_Ratio) 
+
+# cor.test(trait_data$Loneliness_avg, trait_data$CloseFrd_Total)
+
+# cor.test(trait_data$Loneliness_avg, trait_data$NegEmoSupp_Total)
+
+# cor.test(trait_data$CloseFrd_Total, trait_data$NegEmoSupp_Total)
+
+```
+
+
+```{r, echo=FALSE}
+# old notes:
+# Regression analysis for trait anxiety and EmoRating, predicting whether student seeks help.
+# Anxiety is not a significant predictor of self-disclosure.
+
+#anxiety_got_help_model = glmer(GotHelp ~ EmoRating_neg_pz*STAI_MEAN_ctr + (1 | ID/Dorm)  + (0 + EmoRating_neg_pz | ID), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+# summary(anxiety_got_help_model)
+
+```
+
+
+```{r, echo=FALSE}
+# old notes:
+# Correlation between anxiety and loneliness.
+# Anxiety and loneliness are moderately positively correlated.
+
+# cor.test(trait_data$Loneliness_avg, trait_data$STAI_MEAN)
+
+```
+
+
+```{r, echo=FALSE}
+# old notes:
+# Regression analysis for trait depression and EmoRating, predicting whether student seeks help.
+# Depression is not a significant predictor of self-disclosure.
+
+#depression_got_help_model = glmer(GotHelp ~ EmoRating_neg_pz*CESD_avg_ctr + (1 | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+# summary(depression_got_help_model)
+
+```
+
+
+```{r, echo=FALSE}
+# old notes:
+# Correlation between depression and loneliness.
+# Depression and loneliness are strongly positively correlated.
+
+# cor.test(trait_data$Loneliness_avg, trait_data$CESD_avg)
+
+```
+
+
+```{r, echo=FALSE}
+# old notes:
+# Regression analysis for perceived stress and EmoRating, predicting whether student seeks help.
+# Perceived stress is not a significant predictor of self-disclosure.
+
+#stress_got_help_model = glmer(GotHelp ~ EmoRating_neg_pz*PSS_avg_ctr + (1 | ID/Dorm) + (0 + EmoRating_neg_pz | ID/Dorm), data=subset(dd_trait_data, (Val_EC==-1)), family=binomial, control=glmerControl(optimizer='bobyqa'))
+
+# summary(stress_got_help_model)
+
+```
+
+
+```{r, echo=FALSE}
+# old notes: 
+# Correlation between perceived stress and loneliness.
+# Perceived stress and loneliness are moderately positively correlated.
+
+# cor.test(trait_data$Loneliness_avg, trait_data$PSS_avg)
+
 ```
 
