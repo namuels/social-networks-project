@@ -2,7 +2,7 @@
     File name: dd_trait_merge.py
     Authors: Natalie Samuels & Jack Jester-Weinstein
     Date created: 8/23/2018
-    Date last modified: 1/15/2018
+    Date last modified: 4/30/2019
     Python Version: 3.7
     Description: A data pre-processing script that cleans and merges
     daily diary, network, and trait data from the SSNL Social Networks
@@ -114,9 +114,9 @@ def clean_trait(trait_data):
     """
     trait_data = trait_data.loc[trait_data['time'] == 0]
     trait_data = trait_data[['ID', 'Gender_bin', 'IRQ_TN', 'IRQ_EN', 'IRQ_TP', 'IRQ_EP', 'IRI_EC', 'IRI_PT', 'IRI_PD',
-                             'PSA_avg', 'NTB_avg', 'MCSDS_avg', 'CESD_avg', 'STAI_MEAN', 'PSS_avg', 'Loneliness_avg',
-                             'PANAS_NegAvg', 'PANAS_PosAvg', 'SHS_avg', 'SWLS_avg', 'BIS_avg', 'BAS_drive',
-                             'NPI15_avg', 'BFI_a', 'BFI_e', 'BFI_n']]
+                             'LTES_avg', 'PSA_avg', 'PSA_avg', 'NTB_avg', 'MCSDS_avg', 'CESD_avg', 'STAI_MEAN',
+                             'PSS_avg', 'Loneliness_avg', 'PANAS_NegAvg', 'PANAS_PosAvg', 'SHS_avg', 'SWLS_avg',
+                             'BIS_avg', 'BAS_drive', 'NPI15_avg', 'BFI_a', 'BFI_e', 'BFI_n']]
 
     return trait_data
 
