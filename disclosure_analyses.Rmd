@@ -240,13 +240,13 @@ fall_neg_dd_trait_data$ev_qual_got_help_prob = logit_to_prob(fall_neg_dd_trait_d
 
 # plotting probability of disclosing negative events by category
 ggplot(data = fall_neg_dd_trait_data, 
-       mapping = aes(x=Category, y=ev_qual_got_help_prob)) + 
+       mapping = aes(x=Category, y=as.numeric(as.character(GotHelp)))) + 
   # add chance line
   geom_hline(yintercept = 0.5, 
              linetype = "dashed") + 
   geom_point(alpha = 0.2,
              size = 1, 
-             position  = position_jitter(width = 0.1, height = 0)) + 
+             position  = position_jitter(width = 0.3, height = 0)) + 
   stat_summary(fun.data = "mean_cl_boot",
                geom = "linerange") + 
   stat_summary(fun.y = "mean",
@@ -272,7 +272,7 @@ ggplot(data = fall_neg_dd_trait_data,
 
 # plotting probability of disclosing negative events by emotion rating (person z-scored)
 ggplot(data = fall_neg_dd_trait_data, 
-       mapping = aes(x=EmoRating_pz, y=ev_qual_got_help_prob)) + 
+       mapping = aes(x=EmoRating_pz, y=as.numeric(as.character(GotHelp)))) + 
   # add chance line
   geom_hline(yintercept = 0.5, 
              linetype = "dashed") + 
@@ -315,7 +315,7 @@ fall_neg_dd_trait_data$loneliness_got_help_prob = logit_to_prob(fall_neg_dd_trai
 
 # plotting probability of disclosing negative events by loneliness
 ggplot(data = fall_neg_dd_trait_data, 
-       mapping = aes(x=Loneliness_avg_z, y=loneliness_got_help_prob)) + 
+       mapping = aes(x=Loneliness_avg_z, y=as.numeric(as.character(GotHelp)))) + 
   # add chance line
   geom_hline(yintercept = 0.5, 
              linetype = "dashed") + 
@@ -342,7 +342,7 @@ ggplot(data = fall_neg_dd_trait_data,
   theme(plot.caption=element_text(hjust = 0, 
                                   color = "darkgray")) + 
   # rename x-axis variables
-  xlab("Perceived Loneliness (SD)") + 
+  xlab("Loneliness (SD)") + 
   ylab("Probability") + 
   # rescale y-axis
   scale_y_continuous(limits = c(0, 1)) + 
@@ -364,16 +364,77 @@ fall_neg_dd_trait_data = dd_trait_data %>%
   ungroup() %>% 
   filter(Dorm == 3 | Dorm == 4)
 
-# mean-center network metrics of interest
+# preparing aggregate disclosure ratio and centering outdegree
 fall_neg_dd_trait_data = fall_neg_dd_trait_data %>% 
+  group_by(ID) %>% 
+  mutate(stressor_count_agg = length(EventNum)) %>% 
+  mutate(disclosure_count_agg = sum(as.numeric(as.character(GotHelp)))) %>% 
+  mutate(disclosure_ratio_agg = disclosure_count_agg / stressor_count_agg) %>% 
+  ungroup() %>% 
+  mutate(disclosure_ratio_agg_z = scale(disclosure_ratio_agg)) %>% 
   mutate_at(vars(Responsive_Total, Empathic_Total), 
-            funs(ctr = mean_center(.)))
+            funs(z = scale(.)))
 
-# does empathy of network predict disclosure? [NO]
-empathic_net_got_help_model = glmer(GotHelp ~ Empathic_Total_ctr + (1 | ID/Dorm/Day), data=fall_neg_dd_trait_data, family=binomial, control=glmerControl(optimizer='bobyqa'))
+# does empathy of network predict disclosure? [YES]
+empathic_net_got_help_model = fall_neg_dd_trait_data %>% 
+  group_by(ID) %>% 
+  lm(disclosure_ratio_agg_z ~ Empathic_Total_z, data=.)
 
-# does responsiveness of network predict disclosure? [NO]
-responsive_net_got_help_model = glmer(GotHelp ~ Responsive_Total_ctr + (1 | ID/Dorm/Day), data=fall_neg_dd_trait_data, family=binomial, control=glmerControl(optimizer='bobyqa'))
+# plotting disclosure by empathy network outdegree
+ggplot(data = fall_neg_dd_trait_data, 
+       mapping = aes(x=Empathic_Total_z, y=disclosure_ratio_agg_z)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.1, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Empathy of Network Predicts Disclosure") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Empathic Outdegree (SD)") + 
+  # rename x axis labels
+  scale_x_continuous(limits = c(-2.25, 2.25)) + 
+  ylab("Rate of Disclosure (SD)") + 
+  # rescale y-axis
+  scale_y_continuous(limits = c(-2.5, 2.5))
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+# does responsiveness of network predict disclosure? [YES]
+responsive_net_got_help_model = fall_neg_dd_trait_data %>% 
+  group_by(ID) %>% 
+  lm(disclosure_ratio_agg_z ~ Responsive_Total_z, data=.)
+
+# plotting disclosure by empathy network outdegree
+ggplot(data = fall_neg_dd_trait_data, 
+       mapping = aes(x=Responsive_Total_z, y=disclosure_ratio_agg_z)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.1, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Responsiveness of Network Predicts Disclosure") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Responsive Outdegree (SD)") + 
+  # rename x axis labels
+  scale_x_continuous(limits = c(-2.25, 2.25)) + 
+  ylab("Rate of Disclosure (SD)") + 
+  # rescale y-axis
+  scale_y_continuous(limits = c(-2.5, 2.5))
 
 ```
 
@@ -425,10 +486,133 @@ fall_neg_dd_trait_data = fall_neg_dd_trait_data %>%
 
 
 ```{r, echo=FALSE, include=FALSE}
-# assessing the utility of disclosure
+# assessing the utility of disclosure by predicting same-day wellbeing
 
 # preparing daily diary data
-fall_neg_dd_trait_data_utility = fall_neg_dd_trait_data %>% 
+fall_neg_dd_trait_data_utility_sd = fall_neg_dd_trait_data %>% 
+  # create effect column for GotHelp
+  mutate(GotHelp = ifelse(GotHelp == 1, 1, -1)) %>% 
+  # create column for magnitude of stressors experienced each day (person-centered)
+  group_by(ID, Day) %>% 
+  mutate(EmoRating_day_mag = sum(EmoRating, na.rm = TRUE)) %>% 
+  # create daily disclosure ratio
+  mutate(stressor_count = length(EventNum)) %>% 
+  mutate(disclosure_count = sum(as.numeric(as.character(GotHelp)))) %>% 
+  mutate(disclosure_ratio = disclosure_count / stressor_count) %>% 
+  ungroup() %>% 
+  # person-z-score disclosure ratio and center daily emotion rating
+  group_by(ID) %>% 
+  mutate(disclosure_ratio_pz = scale(disclosure_ratio)) %>% 
+  mutate(EmoRating_day_mag_ctr = mean_center(EmoRating_day_mag)) %>% 
+  ungroup() %>% 
+  # select relevant columns for utility analyses
+  select(ID, disclosure_ratio_pz, EmoRating_day_mag_ctr, 
+         LifSat_day_avg_pz, Lonely_day_avg_pz, PosAff_day_avg_pz, NegAff_day_avg_pz, Stress_day_avg_pz)
+
+# does disclosure predict same-day satisfaction with day? [NO]
+utility_lifsat_model_sd = lm(LifSat_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+# does disclosure predict same-day loneliness? [YES]
+utility_lonely_model_sd = lm(Lonely_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+# does disclosure predict same-day positive affect? [NO]
+utility_posaff_model_sd = lm(PosAff_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+# does disclosure predict same-day negative affect? [YES]
+utility_negaff_model_sd = lm(NegAff_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+# does disclosure predict same-day stress? [YES]
+utility_stress_model_sd = lm(Stress_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+# plotting loneliness by disclosure
+broom::tidy(utility_lonely_model_sd, conf.int=TRUE)
+
+ggplot(data = fall_neg_dd_trait_data_utility_sd, 
+       mapping = aes(x=disclosure_ratio_pz, y=Lonely_day_avg_pz)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.2, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Disclosure Predicts Perceived Loneliness") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Rate of Disclosure (SD)") + 
+  # rename x axis labels
+  scale_x_continuous(limits = c(-4, 3)) + 
+  ylab("Loneliness (SD)") + 
+  # rescale y-axis
+  scale_y_continuous(limits = c(-3, 3))
+
+# plotting negative affect by disclosure
+broom::tidy(utility_negaff_model_sd, conf.int=TRUE)
+
+ggplot(data = fall_neg_dd_trait_data_utility_sd, 
+       mapping = aes(x=disclosure_ratio_pz, y=NegAff_day_avg_pz)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.2, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Disclosure Predicts Negative Affect") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Rate of Disclosure (SD)") + 
+  # rename x axis labels
+  scale_x_continuous(limits = c(-4, 3)) + 
+  ylab("Negative Affect (SD)") + 
+  # rescale y-axis
+  scale_y_continuous(limits = c(-3, 3))
+
+# plotting stress by disclosure
+broom::tidy(utility_stress_model_sd, conf.int=TRUE)
+
+ggplot(data = fall_neg_dd_trait_data_utility_sd, 
+       mapping = aes(x=disclosure_ratio_pz, y=Stress_day_avg_pz)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.2, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Disclosure Predicts Perceived Stress") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Rate of Disclosure (SD)") + 
+  # rename x axis labels
+  scale_x_continuous(limits = c(-4, 3)) + 
+  ylab("Perceived Stress (SD)") + 
+  # rescale y-axis
+  scale_y_continuous(limits = c(-3, 3))
+
+```
+
+Students' perceived loneliness, negative affect, and perceived stress are lower on days when they disclose a higher proportion of their stressors to peers, regardless of the magnitude of stress they experienced that day. Interstingly, rate of stress disclosure does not predict positive affect of satisfaction with day. 
+
+
+```{r, echo=FALSE, include=FALSE}
+# assessing the utility of disclosure by predicting next-day wellbeing
+
+# preparing daily diary data
+fall_neg_dd_trait_data_utility_nd = fall_neg_dd_trait_data %>% 
   # create effect column for GotHelp
   mutate(GotHelp = ifelse(GotHelp == 1, 1, -1)) %>% 
   # creating time-lagged daily emotion columns
@@ -453,23 +637,266 @@ fall_neg_dd_trait_data_utility = fall_neg_dd_trait_data %>%
          LifSat_day_avg_pz_next_day, Lonely_day_avg_pz_next_day, PosAff_day_avg_pz_next_day, NegAff_day_avg_pz_next_day, Stress_day_avg_pz_next_day)
 
 # does disclosure predict next day satisfaction with day? [NO]
-utility_lifsat_model = lmer(LifSat_day_avg_pz_next_day ~ LifSat_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + LifSat_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility, na.action=na.exclude)
+utility_lifsat_model_nd = lmer(LifSat_day_avg_pz_next_day ~ LifSat_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + LifSat_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility_nd, na.action=na.exclude)
 
 # does disclosure predict next day loneliness? [NO]
-utility_lonely_model = lmer(Lonely_day_avg_pz_next_day ~ Lonely_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + Lonely_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility, na.action=na.exclude)
+utility_lonely_model_nd = lmer(Lonely_day_avg_pz_next_day ~ Lonely_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + Lonely_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility_nd, na.action=na.exclude)
 
 # does disclosure predict next day positive affect? [NO]
-utility_posaff_model = lmer(PosAff_day_avg_pz_next_day ~ PosAff_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + PosAff_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility, na.action=na.exclude)
+utility_posaff_model_nd = lmer(PosAff_day_avg_pz_next_day ~ PosAff_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + PosAff_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility_nd, na.action=na.exclude)
 
 # does disclosure predict next day negative affect? [NO]
-utility_negaff_model = lmer(NegAff_day_avg_pz_next_day ~ NegAff_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + NegAff_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility, na.action=na.exclude)
+utility_negaff_model_nd = lmer(NegAff_day_avg_pz_next_day ~ NegAff_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + NegAff_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility_nd, na.action=na.exclude)
 
 # does disclosure predict next day stress? [NO]
-utility_stress_model = lmer(Stress_day_avg_pz_next_day ~ Stress_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + Stress_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility, na.action=na.exclude)
+utility_stress_model_nd = lmer(Stress_day_avg_pz_next_day ~ Stress_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + Stress_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility_nd, na.action=na.exclude)
 
 ```
 
-Students' daily disclosure activity was used to predict satisfaction, loneliness, positive and negative affect, and stress the following day. Disclosing stress to a dorm-mate did not predict significant changes in these measures of well-being at the daily level.
+Students' daily disclosure activity was used to predict satisfaction, loneliness, positive and negative affect, and stress the following day. Disclosing stress to a dorm-mate did not predict significant changes in these measures of well-being the following day.
+
+
+## Daily Ambient Empathy
+``` {r, echo=FALSE, include=FALSE}
+library(stringr)
+
+# read in and prepare daily event data (pull and reshape daily disclosure targets)
+dd_event_data = read.csv(file="DD_event_data_allDorms_nsamuels.csv")
+pid_roster = read.csv(file="PIDRoster_All4Dorms.csv")
+
+# filter for fall negative event data only
+fall_neg_dd_event_data = dd_event_data %>% 
+  filter(Dorm == 3 | Dorm == 4) %>% 
+  select(ID, Dorm, Day, Dormmates_1:Dormmates_5, DrmNgEvTld1_1:DrmNgEvTld4_5)
+
+# function to assign disclosure targets to negative events
+fun.assign_disclosure_target = function(old_col_name, dormmate) 
+{
+  ifelse(fall_neg_dd_event_data[[old_col_name]] == 1, 
+         as.character(fall_neg_dd_event_data[[dormmate]]), NA)
+}
+
+# assign disclosure targets to negative event 1
+fall_neg_dd_event_data$NegEv1_1 = fun.assign_disclosure_target("DrmNgEvTld1_1", "Dormmates_1")
+fall_neg_dd_event_data$NegEv1_2 = fun.assign_disclosure_target("DrmNgEvTld1_2", "Dormmates_2")
+fall_neg_dd_event_data$NegEv1_3 = fun.assign_disclosure_target("DrmNgEvTld1_3", "Dormmates_3")
+fall_neg_dd_event_data$NegEv1_4 = fun.assign_disclosure_target("DrmNgEvTld1_4", "Dormmates_4")
+fall_neg_dd_event_data$NegEv1_5 = fun.assign_disclosure_target("DrmNgEvTld1_5", "Dormmates_5")
+
+# assign disclosure targets to negative event 2
+fall_neg_dd_event_data$NegEv2_1 = fun.assign_disclosure_target("DrmNgEvTld2_1", "Dormmates_1")
+fall_neg_dd_event_data$NegEv2_2 = fun.assign_disclosure_target("DrmNgEvTld2_2", "Dormmates_2")
+fall_neg_dd_event_data$NegEv2_3 = fun.assign_disclosure_target("DrmNgEvTld2_3", "Dormmates_3")
+fall_neg_dd_event_data$NegEv2_4 = fun.assign_disclosure_target("DrmNgEvTld2_4", "Dormmates_4")
+fall_neg_dd_event_data$NegEv2_5 = fun.assign_disclosure_target("DrmNgEvTld2_5", "Dormmates_5")
+
+# assign disclosure targets to negative event 3
+fall_neg_dd_event_data$NegEv3_1 = fun.assign_disclosure_target("DrmNgEvTld3_1", "Dormmates_1")
+fall_neg_dd_event_data$NegEv3_2 = fun.assign_disclosure_target("DrmNgEvTld3_2", "Dormmates_2")
+fall_neg_dd_event_data$NegEv3_3 = fun.assign_disclosure_target("DrmNgEvTld3_3", "Dormmates_3")
+fall_neg_dd_event_data$NegEv3_4 = fun.assign_disclosure_target("DrmNgEvTld3_4", "Dormmates_4")
+fall_neg_dd_event_data$NegEv3_5 = fun.assign_disclosure_target("DrmNgEvTld3_5", "Dormmates_5")
+
+fall_neg_dd_event_data = fall_neg_dd_event_data %>% 
+  select(ID, Dorm, Day, NegEv1_1:NegEv3_5) %>% 
+  gather(key = "EventNum", value = "dormmate_name", NegEv1_1:NegEv3_5)
+
+# clean up event numbers and disclosure target names and add valence column
+fall_neg_dd_event_data$EventNum = as.numeric(str_match(fall_neg_dd_event_data$EventNum,
+                                            "NegEv(.*?)_")[, 2])
+fall_neg_dd_event_data$Valence = "Neg"
+
+fun.replace_name = function(old_name, new_name) 
+{
+  gsub(old_name, new_name, fall_neg_dd_event_data$dormmate_name)
+}
+
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Sam Ginn$", "Sameul Ginn")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^sam ginn$", "Sameul Ginn")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Joseph$", "Joseph Hurlocker") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Joey Hurlocker$", "Joseph Hurlocker")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Nicel$", "Nicel Mohamed-Hinds")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Nicel $", "Nicel Mohamed-Hinds")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Nicel Muhammed$", "Nicel Mohamed-Hinds")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Nicel Mohammed$", "Nicel Mohamed-Hinds")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Megan$", "Megan Rowe")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Lulu$", "Marilu Bravo")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Max Holland$", "Max Horland")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Astrid$", "Astrid Casimire")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Jenny$", "Jenny Han")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Jenny $", "Jenny Han")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Carolyn's Lee $", "Carolyn Lee") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Enoch park$", "Enoch Park") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Enoch$", "Enoch Park") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Lara Ecalavge $", "Lara Elcavage") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Lara Eclavage$", "Lara Elcavage") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Lea Koob $", "Lea Koob") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Deedee Anderson$", "Deanna Anderson")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Cody carlton$", "Cody Carlton") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Deedee Anderson $", "Deanna Anderson")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Matt Lara$", "Matthew Lara") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Brendan Edelson $", "Brendan Edelson")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Samuel Ginn$", "Sameul Ginn") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^maurice Chiang $", "Maurice Chiang") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Maurice chiang$", "Maurice Chiang") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Eleni Alexandraki $", "Eleni Alexandraki") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Vicky$", "Vicky Le") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Selwin george$", "Selwin George") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^jackson lallas$", "Jackson Lallas") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Cindy$", "Cindy Nguyen") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Christopher Koenig $", "Christopher Koenig")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Matt Lara $", "Matthew Lara") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Claudia$", "Claudia Hanley")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Claudia Hanley $", "Claudia Hanley") 
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Astrid $", "Astrid Casimire")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Albert$", "Albert Liang")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Dylan$", "Dylan Harding")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Beck goodloe$", "Beck Goodloe")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Amy Couch$", "Amy Kouch")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Hope$", "Hope Harrington")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Cody Carlton $", "Cody Carlton")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Arielle$", "Arielle Rodriguez ")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Marilou Bravo$", "Marilu Bravo")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Shelby Parks $", "Shelby Parks")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^miguel Vera$", "Miguel Vera")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Megan$", "Megan Rowe")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Edric$", "Edric Zeng")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Dylan Harding $", "Dylan Harding")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Donny$", "Donny Flynn")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Leni Peterson $", "Leni Peterson")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^flora wang$", "Flora Wang")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Andrea Ramirez Oviedo$", "Andrea Ramirez")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Mad Horland$", "Max Horland")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Daniel parra$", "Daniel Parra")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Lucas Isaza $", "Lucas Isaza")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^arielle rodriguez$", "Arielle Rodriguez")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Dana Chu Tung$", "Dana Tung")
+fall_neg_dd_event_data$dormmate_name = fun.replace_name("^Mark ferguson$", "Mark Ferguson")
+
+# replace disclosure target names with IDs
+fall_neg_dd_event_data["dormmate_id"] = 
+  pid_roster$ID[match(fall_neg_dd_event_data$dormmate_name, pid_roster$Name)]
+
+# match disclosure target IDs with empathy scores (IRI_EC, IRI_PT, PSA_avg, LTES_avg)
+fall_neg_dd_event_data["dormmate_IRI_EC"] = 
+  fall_neg_dd_trait_data$IRI_EC[match(fall_neg_dd_event_data$dormmate_id,
+                                       fall_neg_dd_trait_data$ID)]
+fall_neg_dd_event_data["dormmate_IRI_PT"] = 
+  fall_neg_dd_trait_data$IRI_PT[match(fall_neg_dd_event_data$dormmate_id,
+                                       fall_neg_dd_trait_data$ID)]
+fall_neg_dd_event_data["dormmate_PSA_avg"] = 
+  fall_neg_dd_trait_data$PSA_avg[match(fall_neg_dd_event_data$dormmate_id,
+                                       fall_neg_dd_trait_data$ID)]
+fall_neg_dd_event_data["dormmate_LTES_avg"] = 
+  fall_neg_dd_trait_data$LTES_avg[match(fall_neg_dd_event_data$dormmate_id,
+                                       fall_neg_dd_trait_data$ID)]
+
+# compute daily ambient empathy
+fall_neg_daily_amb_emp_data = fall_neg_dd_event_data %>% 
+  # compute mean empathy of disclosure targets
+  rowwise() %>% 
+  mutate(disc_target_empathy = mean(c(dormmate_IRI_EC, dormmate_IRI_PT, 
+                                      dormmate_PSA_avg, dormmate_LTES_avg))) %>% 
+  ungroup() %>% 
+  # compute daily ambient empathy
+  group_by(ID, Day) %>% 
+  mutate(ambient_empathy_day = mean(disc_target_empathy, na.rm=TRUE)) %>% 
+  ungroup() %>% 
+  # person-z-score daily ambient empathy
+  group_by(ID) %>% 
+  mutate(ambient_empathy_day_pz = scale(ambient_empathy_day)) %>% 
+  ungroup() %>% 
+  select(ID, Dorm, Day, Valence, EventNum, ambient_empathy_day_pz)
+  
+# prep daiy stress data
+
+# create column for magnitude of stressors experienced each day (person-centered)
+# and select releant columns for daiy ambient empathy analysis
+fall_daily_stress_data = fall_neg_dd_trait_data %>% 
+  group_by(ID, Day) %>% 
+  mutate(EmoRating_day_mag = sum(EmoRating, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  group_by(ID) %>% 
+  mutate(EmoRating_day_mag_pz = scale(EmoRating_day_mag)) %>% 
+  ungroup() %>% 
+  select(ID, Dorm, Day, Valence, EventNum, EmoRating_day_mag_pz, Stress_day_avg_pz, 
+         Empathic_Total_z, Responsive_Total_z)
+
+# add daily stress data to daily ambient empathy dataframe
+fall_neg_daily_amb_emp_data = left_join(fall_neg_daily_amb_emp_data, fall_daily_stress_data, 
+          by = c("ID", "Dorm", "Day", "Valence", "EventNum"))
+
+```
+
+
+``` {r ambient empathy analyses, echo=FALSE, include=FALSE}
+
+# does daily objective stress predict daily preceived stress? [YES]
+obj_perc_stress_model = lm(Stress_day_avg_pz ~ EmoRating_day_mag_pz, data = unique(fall_neg_daily_amb_emp_data), na.action=na.exclude)
+
+# does daily objective stress predict daily ambient empathy? [NO]
+obj_stress_amb_emp_model = lm(ambient_empathy_day_pz ~ EmoRating_day_mag_pz, data = unique(fall_neg_daily_amb_emp_data), na.action=na.exclude)
+
+# does daily perceived stress predict daily ambient empathy? [NO]
+perc_stress_amb_emp_model = lm(ambient_empathy_day_pz ~ Stress_day_avg_pz, data = unique(fall_neg_daily_amb_emp_data), na.action=na.exclude)
+
+# plotting daily ambient empathy by daily objective stress
+ggplot(data = unique(fall_neg_daily_amb_emp_data), 
+       mapping = aes(x=EmoRating_day_mag_pz, y=ambient_empathy_day_pz)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(data = unique(fall_neg_daily_amb_emp_data), 
+             alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.1, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Daily Stress Predicts Daily Ambient Empathy") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Magnitude of Stress (SD)") + 
+  # rename x axis labels
+  scale_x_continuous(limits = c(-2.75, 2.75)) + 
+  ylab("Ambient Empathy (SD)") + 
+  # rescale y-axis
+  scale_y_continuous(limits = c(-2, 2))
+
+# does daily ambient empathy moderate the relationship between objective stress 
+# and preceived stress? [NO]
+amb_emp_mod_stress_model = lm(Stress_day_avg_pz ~ EmoRating_day_mag_pz:ambient_empathy_day_pz,
+                              data = unique(fall_neg_daily_amb_emp_data), na.action=na.exclude)
+
+# does overall ambient empathy moderate the relationship between objective stress 
+# and preceived stress? [NO]
+agg_amb_emp_mod_stress_model = lm(Stress_day_avg_pz ~ EmoRating_day_mag_pz:Empathic_Total_z,
+                              data = unique(fall_neg_daily_amb_emp_data), na.action=na.exclude)
+
+# does overall ambient responsiveness moderate the relationship between objective stress 
+# and preceived stress? [NO]
+agg_amb_resp_mod_stress_model = lm(Stress_day_avg_pz ~ EmoRating_day_mag_pz:Responsive_Total_z,
+                              data = unique(fall_neg_daily_amb_emp_data), na.action=na.exclude)
+
+# median split ambient responsiveness for simple effects model
+median_amb_resp = median(fall_neg_daily_amb_emp_data$Responsive_Total_z, na.rm=TRUE)
+
+fall_neg_daily_amb_emp_data$Responsive_Total_med_split = 
+  ifelse(fall_neg_daily_amb_emp_data$Responsive_Total_z > median_amb_resp, 
+         'hi', 'lo')
+
+# simple effect: high ambient responsiveness [b = 0.20]
+hi_agg_amb_resp_mod_stress_model = unique(fall_neg_daily_amb_emp_data) %>% 
+  filter(Responsive_Total_med_split == 'hi') %>% 
+  lm(Stress_day_avg_pz ~ EmoRating_day_mag_pz, data = ., na.action=na.exclude)
+
+# simple effect: low ambient responsivenecc [b = 0.29]
+lo_agg_amb_resp_mod_stress_model = unique(fall_neg_daily_amb_emp_data) %>% 
+  filter(Responsive_Total_med_split == 'lo') %>% 
+  lm(Stress_day_avg_pz ~ EmoRating_day_mag_pz, data = ., na.action=na.exclude)
+
+```
 
 
 ## Next Steps
