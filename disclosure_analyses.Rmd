@@ -107,6 +107,9 @@ pos_dd_trait_data$EmoRating_pz = ave(pos_dd_trait_data$EmoRating, pos_dd_trait_d
 ```{r echo=FALSE}
 # subsetting dd_trait_data to get trait_data
 trait_data = subset(dd_trait_data, (Day == 1 & EventNum == 1 & Valence == 'Pos'))
+
+fall_trait_data = trait_data %>% 
+  filter(Dorm == 3 | Dorm == 4)
 ```
 
 
@@ -333,7 +336,7 @@ ggplot(data = fall_neg_dd_trait_data,
               se = TRUE, 
               color = "darkblue", 
               size = 1) +
-  ggtitle("Perceived Loneliness Predicts Probability of Diclosure") + 
+  ggtitle("Perceived Loneliness Predicts Diclosure") + 
   # center plot title
   theme(plot.title = element_text(hjust = 0.5)) + 
   # add caption
@@ -343,7 +346,7 @@ ggplot(data = fall_neg_dd_trait_data,
                                   color = "darkgray")) + 
   # rename x-axis variables
   xlab("Loneliness (SD)") + 
-  ylab("Probability") + 
+  ylab("Probability of Disclosure (SD)") + 
   # rescale y-axis
   scale_y_continuous(limits = c(0, 1)) + 
   # edit legend labels
@@ -354,7 +357,7 @@ ggplot(data = fall_neg_dd_trait_data,
 Students who experience more loneliness are less likely than their peers to disclose stressful events, regardless of the objective number of friendships the student reports having. Trait anxiety, depression, and perceived stress were also tested in separate models, but none emerged as significant predictors of disclosure.
 
 
-## How do students' social relationships influence their likelihood of disclosure?
+## How do students' perceptions of their social environments predict their likelihood of disclosure?
 ```{r, echo=FALSE, warning=FALSE}
 # refresh fall_neg_dd_trait_data
 fall_neg_dd_trait_data = dd_trait_data %>% 
@@ -375,14 +378,26 @@ fall_neg_dd_trait_data = fall_neg_dd_trait_data %>%
   mutate_at(vars(Responsive_Total, Empathic_Total), 
             funs(z = scale(.)))
 
-# does empathy of network predict disclosure? [YES]
-empathic_net_got_help_model = fall_neg_dd_trait_data %>% 
-  group_by(ID) %>% 
-  lm(disclosure_ratio_agg_z ~ Empathic_Total_z, data=.)
+# add disclosure ratio and responsive / empathic outdegree to trait data
+fall_trait_data['disclosure_ratio_agg_z'] = 
+  fall_neg_dd_trait_data$disclosure_ratio_agg_z[match(fall_trait_data$ID, 
+                                                      fall_neg_dd_trait_data$ID)]
 
-# plotting disclosure by empathy network outdegree
-ggplot(data = fall_neg_dd_trait_data, 
-       mapping = aes(x=Empathic_Total_z, y=disclosure_ratio_agg_z)) + 
+fall_trait_data['Responsive_Total_z'] = 
+  fall_neg_dd_trait_data$Responsive_Total_z[match(fall_trait_data$ID, 
+                                                      fall_neg_dd_trait_data$ID)]
+
+fall_trait_data['Empathic_Total_z'] = 
+  fall_neg_dd_trait_data$Empathic_Total_z[match(fall_trait_data$ID, 
+                                                      fall_neg_dd_trait_data$ID)]
+
+# does trait loneliness predict rate of disclosure? [YES]
+lonely_disclosure_rate_model = 
+  lm(disclosure_ratio_agg_z ~ Loneliness_avg_z + CloseFrd_Total_ctr, data = fall_trait_data)
+
+# plotting disclosure by trait loneliness
+ggplot(data = fall_trait_data, 
+       mapping = aes(x=Loneliness_avg_z, y=disclosure_ratio_agg_z)) + 
   # add line denoting mean within a student
   geom_hline(yintercept = 0, 
              linetype = "dashed") + 
@@ -390,55 +405,124 @@ ggplot(data = fall_neg_dd_trait_data,
              size = 1, 
              position  = position_jitter(width = 0.1, height = 0)) + 
   geom_smooth(method = "lm", 
+              se = FALSE, 
+              aes(group = factor(CloseFrd_Total), 
+                  color = factor(CloseFrd_Total)), 
+              size = 0.75) + 
+  geom_smooth(method = "lm", 
               se = TRUE, 
               color = "darkblue", 
               size = 1) + 
-  ggtitle("Empathy of Network Predicts Disclosure") + 
+  ggtitle("Perceived Loneliness Predicts Disclosure") + 
   # center plot title
   theme(plot.title = element_text(hjust = 0.5)) + 
-  xlab("Empathic Outdegree (SD)") + 
-  # rename x axis labels
-  scale_x_continuous(limits = c(-2.25, 2.25)) + 
+  xlab("Loneliness (SD)") + 
   ylab("Rate of Disclosure (SD)") + 
-  # rescale y-axis
-  scale_y_continuous(limits = c(-2.5, 2.5))
+  # edit legend labels
+  scale_color_discrete(name = "# Close\nFriends")
 
 ```
 
 
 ```{r, echo=FALSE, warning=FALSE}
 
-# does responsiveness of network predict disclosure? [YES]
-responsive_net_got_help_model = fall_neg_dd_trait_data %>% 
-  group_by(ID) %>% 
-  lm(disclosure_ratio_agg_z ~ Responsive_Total_z, data=.)
+# does empathy of network predict rate of disclosure? [NO]
+empathic_net_got_help_model = 
+  lm(disclosure_ratio_agg_z ~ Empathic_Total_z, data = fall_trait_data)
 
 # plotting disclosure by empathy network outdegree
-ggplot(data = fall_neg_dd_trait_data, 
-       mapping = aes(x=Responsive_Total_z, y=disclosure_ratio_agg_z)) + 
-  # add line denoting mean within a student
-  geom_hline(yintercept = 0, 
-             linetype = "dashed") + 
-  geom_point(alpha = 0.2,
-             size = 1, 
-             position  = position_jitter(width = 0.1, height = 0)) + 
-  geom_smooth(method = "lm", 
-              se = TRUE, 
-              color = "darkblue", 
-              size = 1) + 
-  ggtitle("Responsiveness of Network Predicts Disclosure") + 
-  # center plot title
-  theme(plot.title = element_text(hjust = 0.5)) + 
-  xlab("Responsive Outdegree (SD)") + 
-  # rename x axis labels
-  scale_x_continuous(limits = c(-2.25, 2.25)) + 
-  ylab("Rate of Disclosure (SD)") + 
-  # rescale y-axis
-  scale_y_continuous(limits = c(-2.5, 2.5))
+# ggplot(data = fall_trait_data, 
+#        mapping = aes(x=Empathic_Total_z, y=disclosure_ratio_agg_z)) + 
+#   # add line denoting mean within a student
+#   geom_hline(yintercept = 0, 
+#              linetype = "dashed") + 
+#   geom_point(alpha = 0.2,
+#              size = 1, 
+#              position  = position_jitter(width = 0.1, height = 0)) + 
+#   geom_smooth(method = "lm", 
+#               se = TRUE, 
+#               color = "darkblue", 
+#               size = 1) + 
+#   ggtitle("Empathy of Network Predicts Disclosure") + 
+#   # center plot title
+#   theme(plot.title = element_text(hjust = 0.5)) + 
+#   xlab("Empathic Outdegree (SD)") + 
+#   # rename x axis labels
+#   #scale_x_continuous(limits = c(-2.25, 2.25)) + 
+#   ylab("Rate of Disclosure (SD)") + 
+#   # rescale y-axis
+#   #scale_y_continuous(limits = c(-2.5, 2.5))
 
 ```
 
-Attributes of students' social networks were used to predict their likelihood of disclosure. Neither the number of empathic friends nor the number responsive friends a student reported having in their dorm predicted significant differences in likelihood of disclosure.
+
+```{r, echo=FALSE, warning=FALSE}
+
+# does responsiveness of network predict disclosure? [NO]
+responsive_net_got_help_model = 
+  lm(disclosure_ratio_agg_z ~ Responsive_Total_z, data = fall_trait_data)
+
+# plotting disclosure by empathy network outdegree
+# ggplot(data = fall_neg_dd_trait_data, 
+#        mapping = aes(x=Responsive_Total_z, y=disclosure_ratio_agg_z)) + 
+#   # add line denoting mean within a student
+#   geom_hline(yintercept = 0, 
+#              linetype = "dashed") + 
+#   geom_point(alpha = 0.2,
+#              size = 1, 
+#              position  = position_jitter(width = 0.1, height = 0)) + 
+#   geom_smooth(method = "lm", 
+#               se = TRUE, 
+#               color = "darkblue", 
+#               size = 1) + 
+#   ggtitle("Responsiveness of Network Predicts Disclosure") + 
+#   # center plot title
+#   theme(plot.title = element_text(hjust = 0.5)) + 
+#   xlab("Responsive Outdegree (SD)") + 
+#   # rename x axis labels
+#   scale_x_continuous(limits = c(-2.25, 2.25)) + 
+#   ylab("Rate of Disclosure (SD)") + 
+#   # rescale y-axis
+#   scale_y_continuous(limits = c(-2.5, 2.5))
+
+```
+
+Attributes of students' social networks were used to predict their likelihood of disclosure. Neither the number of empathic friends nor the number responsive friends a student reports having in their dorm predict significant differences in rate of disclosure. Perceptions of social isolation, however, is a significant predictor of rate of disclosure.
+
+
+## How do students' perceptions of their social environments predict their feelings of social integration?
+```{r, echo=FALSE, warning=FALSE}
+
+# does empathy of network predict trait loneliness? [NO]
+empathic_net_lonely_model = 
+  lm(Loneliness_avg_z ~ Empathic_Total_z, data = fall_trait_data)
+
+# does responsiveness of network predict trait loneliness? [YES]
+responsive_net_lonely_model = 
+  lm(Loneliness_avg_z ~ Responsive_Total_z, data = fall_trait_data)
+
+# plotting loneliness by responsive network outdegree
+ggplot(data = fall_trait_data,
+       mapping = aes(x=Responsive_Total_z, y=Loneliness_avg_z)) +
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0,
+             linetype = "dashed") +
+  geom_point(alpha = 0.2,
+             size = 1,
+             position  = position_jitter(width = 0.1, height = 0)) +
+  geom_smooth(method = "lm",
+              se = TRUE,
+              color = "darkblue",
+              size = 1) +
+  ggtitle("Perceived Responsiveness of Network Predicts Loneliness") +
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) +
+  xlab("Responsive Outdegree (SD)") +
+  ylab("Loneliness (SD)")
+
+```
+
+Students who perceive their social envionments to be more responsive report feeling less socially isolated. Perceived empathy of one's social environment does not predict feelings of social islation.
 
 
 ## What is the utility of disclosing negative events to dorm-mates?
@@ -463,7 +547,7 @@ fun.reverse_stress = function(response) {
 # prepare daily emotion data (person z-score)
 
 fall_neg_dd_trait_data = fall_neg_dd_trait_data %>% 
-  rowwise() %>% 
+  group_by(ID, Day) %>% 
   # average daily life satisfaction
   mutate(LifSat_day_avg = mean(c(LifSat_1, LifSat_2, LifSat_3, LifSat_4, LifSat_5))) %>% 
   # average daily loneliness
@@ -476,11 +560,19 @@ fall_neg_dd_trait_data = fall_neg_dd_trait_data %>%
   # average daily stress
   mutate_at(vars(PSS_2, PSS_3), funs(fun.reverse_lonely(.))) %>% 
   mutate(Stress_day_avg = mean(c(PSS_1, PSS_2, PSS_3, PSS_4))) %>% 
+  ungroup() %>% 
+  # remove original daily emotion ratings
+  select(-(LifSat_1:PSS_4)) %>% 
+  # create aggregate daily pos and neg wellbeing columns
+  group_by(ID, Day) %>% 
+  mutate(pos_wellbeing = mean(c(LifSat_day_avg, PosAff_day_avg))) %>% 
+  mutate(neg_wellbeing = mean(c(Lonely_day_avg, NegAff_day_avg, Stress_day_avg))) %>% 
+  ungroup() %>% 
   # person z-score daily emotion data
   group_by(ID) %>% 
-  mutate_at(vars(LifSat_day_avg, Lonely_day_avg, PosAff_day_avg, NegAff_day_avg, Stress_day_avg), 
-            funs(pz = scale(.))) %>% 
-  select(-(LifSat_1:PSS_4))
+  mutate_at(vars(LifSat_day_avg, Lonely_day_avg, PosAff_day_avg, NegAff_day_avg, Stress_day_avg, 
+                 pos_wellbeing, neg_wellbeing), 
+            funs(pz = scale(.)))
 
 ```
 
@@ -506,23 +598,45 @@ fall_neg_dd_trait_data_utility_sd = fall_neg_dd_trait_data %>%
   mutate(EmoRating_day_mag_ctr = mean_center(EmoRating_day_mag)) %>% 
   ungroup() %>% 
   # select relevant columns for utility analyses
-  select(ID, disclosure_ratio_pz, EmoRating_day_mag_ctr, 
-         LifSat_day_avg_pz, Lonely_day_avg_pz, PosAff_day_avg_pz, NegAff_day_avg_pz, Stress_day_avg_pz)
+  select(ID, Day, disclosure_ratio_pz, EmoRating_day_mag_ctr, Responsive_Total_z, Loneliness_avg_z,
+         LifSat_day_avg_pz, Lonely_day_avg_pz, PosAff_day_avg_pz, NegAff_day_avg_pz,
+         Stress_day_avg_pz, pos_wellbeing_pz, neg_wellbeing_pz) %>% 
+  unique()
+
+# does disclosure predict same-day positive markers of wellbeing? [NO]
+utility_sd_pos_wb_model = lm(pos_wellbeing_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+broom::tidy(utility_sd_pos_wb_model, conf.int=TRUE)
+
+# does disclosure predict same-day negative markers of wellbeing? [NO]
+utility_sd_neg_wb_model = lm(neg_wellbeing_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+broom::tidy(utility_sd_neg_wb_model, conf.int=TRUE)
 
 # does disclosure predict same-day satisfaction with day? [NO]
 utility_lifsat_model_sd = lm(LifSat_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
 
-# does disclosure predict same-day loneliness? [YES]
+broom::tidy(utility_lifsat_model_sd, conf.int=TRUE)
+
+# does disclosure predict same-day loneliness? [NO]
 utility_lonely_model_sd = lm(Lonely_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+broom::tidy(utility_lonely_model_sd, conf.int=TRUE)
 
 # does disclosure predict same-day positive affect? [NO]
 utility_posaff_model_sd = lm(PosAff_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
 
-# does disclosure predict same-day negative affect? [YES]
+broom::tidy(utility_posaff_model_sd, conf.int=TRUE)
+
+# does disclosure predict same-day negative affect? [NO]
 utility_negaff_model_sd = lm(NegAff_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
 
-# does disclosure predict same-day stress? [YES]
+broom::tidy(utility_negaff_model_sd, conf.int=TRUE)
+
+# does disclosure predict same-day stress? [NO]
 utility_stress_model_sd = lm(Stress_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+broom::tidy(utility_stress_model_sd, conf.int=TRUE)
 
 ```
 
@@ -605,56 +719,302 @@ ggplot(data = fall_neg_dd_trait_data_utility_sd,
 
 ```
 
-Students' perceived loneliness, negative affect, and perceived stress are lower on days when they disclose a higher proportion of their stressors to peers, regardless of the magnitude of stress they experienced that day. Interstingly, rate of stress disclosure does not predict positive affect of satisfaction with day. 
+Students' perceived loneliness, negative affect, and perceived stress are lower on days when they disclose a higher proportion of their stressors to peers, regardless of the magnitude of stress they experienced that day. Interstingly, rate of stress disclosure does not predict positive affect or satisfaction with day.
 
 
+## How do students' perceptions of their social environments predict daily well-being?
 ```{r, echo=FALSE, include=FALSE}
-# assessing the utility of disclosure by predicting next-day wellbeing
-
 # preparing daily diary data
-fall_neg_dd_trait_data_utility_nd = fall_neg_dd_trait_data %>% 
-  # create effect column for GotHelp
-  mutate(GotHelp = ifelse(GotHelp == 1, 1, -1)) %>% 
-  # creating time-lagged daily emotion columns
-  group_by(ID) %>% 
-  mutate_at(vars(LifSat_day_avg_pz, Lonely_day_avg_pz, PosAff_day_avg_pz, NegAff_day_avg_pz, Stress_day_avg_pz), 
-            funs(next_day = lead(., order_by = ID))) %>% 
-  ungroup() %>% 
+fall_neg_dd_trait_data_soc_perc_wb_sd = fall_neg_dd_trait_data %>% 
   # create column for magnitude of stressors experienced each day (person-centered)
   group_by(ID, Day) %>% 
   mutate(EmoRating_day_mag = sum(EmoRating, na.rm = TRUE)) %>% 
   ungroup() %>% 
+  # person-center daily emotion rating
   group_by(ID) %>% 
   mutate(EmoRating_day_mag_ctr = mean_center(EmoRating_day_mag)) %>% 
   ungroup() %>% 
-  # creating time-lagged daily stress magnitude column
-  group_by(ID) %>% 
-  mutate(EmoRating_day_mag_ctr_next_day = lead(EmoRating_day_mag_ctr, order_by = ID)) %>% 
+  # z-score daily emotion data
+  group_by(Day) %>% 
+  mutate_at(vars(LifSat_day_avg, Lonely_day_avg, PosAff_day_avg, NegAff_day_avg, Stress_day_avg), 
+            funs(z = scale(.))) %>% 
   ungroup() %>% 
   # select relevant columns for utility analyses
-  select(ID, GotHelp, EmoRating_day_mag_ctr_next_day, 
-         LifSat_day_avg_pz, Lonely_day_avg_pz, PosAff_day_avg_pz, NegAff_day_avg_pz, Stress_day_avg_pz, 
-         LifSat_day_avg_pz_next_day, Lonely_day_avg_pz_next_day, PosAff_day_avg_pz_next_day, NegAff_day_avg_pz_next_day, Stress_day_avg_pz_next_day)
-
-# does disclosure predict next day satisfaction with day? [NO]
-utility_lifsat_model_nd = lmer(LifSat_day_avg_pz_next_day ~ LifSat_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + LifSat_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility_nd, na.action=na.exclude)
-
-# does disclosure predict next day loneliness? [NO]
-utility_lonely_model_nd = lmer(Lonely_day_avg_pz_next_day ~ Lonely_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + Lonely_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility_nd, na.action=na.exclude)
-
-# does disclosure predict next day positive affect? [NO]
-utility_posaff_model_nd = lmer(PosAff_day_avg_pz_next_day ~ PosAff_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + PosAff_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility_nd, na.action=na.exclude)
-
-# does disclosure predict next day negative affect? [NO]
-utility_negaff_model_nd = lmer(NegAff_day_avg_pz_next_day ~ NegAff_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + NegAff_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility_nd, na.action=na.exclude)
-
-# does disclosure predict next day stress? [NO]
-utility_stress_model_nd = lmer(Stress_day_avg_pz_next_day ~ Stress_day_avg_pz + GotHelp + EmoRating_day_mag_ctr_next_day + (1 | ID) + (0 + Stress_day_avg_pz|ID) + (0 + GotHelp|ID) + (0 + EmoRating_day_mag_ctr_next_day|ID), data = fall_neg_dd_trait_data_utility_nd, na.action=na.exclude)
+  select(ID, Day, EmoRating_day_mag_ctr, Responsive_Total_z, Empathic_Total_z, Loneliness_avg_z, 
+         LifSat_day_avg_z, Lonely_day_avg_z, PosAff_day_avg_z, NegAff_day_avg_z, Stress_day_avg_z) %>% 
+  unique()
 
 ```
 
-Students' daily disclosure activity was used to predict satisfaction, loneliness, positive and negative affect, and stress the following day. Disclosing stress to a dorm-mate did not predict significant changes in these measures of well-being the following day.
 
+```{r, echo=FALSE, include=FALSE}
+
+# does trait loneliness predict daily loneliness? [YES]
+trait_lonely_sd_lonely_model = lm(Lonely_day_avg_z ~ Loneliness_avg_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_soc_perc_wb_sd, na.action=na.exclude)
+
+broom::tidy(trait_lonely_sd_lonely_model, conf.int=TRUE)
+
+ggplot(data = fall_neg_dd_trait_data_soc_perc_wb_sd, 
+       mapping = aes(x=Loneliness_avg_z, y=Lonely_day_avg_z)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.2, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Trait Loneliness Predicts Daily Loneliness") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Trait Loneliness (SD)") + 
+  ylab("Daily Loneliness (SD)")
+
+# does trait loneliness predict daily negative affect? [YES]
+trait_lonely_sd_negaff_model = lm(NegAff_day_avg_z ~ Loneliness_avg_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_soc_perc_wb_sd, na.action=na.exclude)
+
+broom::tidy(trait_lonely_sd_negaff_model, conf.int=TRUE)
+
+ggplot(data = fall_neg_dd_trait_data_soc_perc_wb_sd, 
+       mapping = aes(x=Loneliness_avg_z, y=NegAff_day_avg_z)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.2, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Trait Loneliness Predicts Daily Negative Affect") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Trait Loneliness (SD)") + 
+  ylab("Daily Negatie Affect (SD)")
+
+# does trait loneliness predict daily stress? [YES]
+trait_lonely_sd_stress_model = lm(Stress_day_avg_z ~ Loneliness_avg_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_soc_perc_wb_sd, na.action=na.exclude)
+
+broom::tidy(trait_lonely_sd_stress_model, conf.int=TRUE)
+
+ggplot(data = fall_neg_dd_trait_data_soc_perc_wb_sd, 
+       mapping = aes(x=Loneliness_avg_z, y=Stress_day_avg_z)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.2, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Trait Loneliness Predicts Daily Stress") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Trait Loneliness (SD)") + 
+  ylab("Daily Stress (SD)")
+
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+
+# does empathy of network predict daily loneliness? [NO]
+emp_net_sd_lonely_model = lm(Lonely_day_avg_z ~ Empathic_Total_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_soc_perc_wb_sd, na.action=na.exclude)
+
+broom::tidy(emp_net_sd_lonely_model, conf.int=TRUE)
+
+# does empathy of network predict daily negative affect? [NO]
+emp_net_sd_negaff_model = lm(NegAff_day_avg_z ~ Empathic_Total_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_soc_perc_wb_sd, na.action=na.exclude)
+
+broom::tidy(emp_net_sd_negaff_model, conf.int=TRUE)
+
+# does empathy of network predict daily stress? [YES - WEAK]
+emp_net_sd_stress_model = lm(Stress_day_avg_z ~ Empathic_Total_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_soc_perc_wb_sd, na.action=na.exclude)
+
+broom::tidy(emp_net_sd_stress_model, conf.int=TRUE)
+
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+
+# does responsiveness of network predict daily loneliness? [YES]
+resp_net_sd_lonely_model = lm(Lonely_day_avg_z ~ Responsive_Total_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_soc_perc_wb_sd, na.action=na.exclude)
+
+broom::tidy(resp_net_sd_lonely_model, conf.int=TRUE)
+
+ggplot(data = fall_neg_dd_trait_data_soc_perc_wb_sd, 
+       mapping = aes(x=Responsive_Total_z, y=Lonely_day_avg_z)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.2, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Perceived Responsiveness of Network Predicts Daily Loneliness") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Responsive Outdegree (SD)") + 
+  ylab("Daily Loneliness (SD)")
+
+# does responsiveness of network predict daily negative affect? [YES]
+resp_net_sd_negaff_model = lm(NegAff_day_avg_z ~ Responsive_Total_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_soc_perc_wb_sd, na.action=na.exclude)
+
+broom::tidy(resp_net_sd_negaff_model, conf.int=TRUE)
+
+ggplot(data = fall_neg_dd_trait_data_soc_perc_wb_sd, 
+       mapping = aes(x=Responsive_Total_z, y=NegAff_day_avg_z)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.2, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Perceived Responsiveness of Network Predicts Daily Negative Affect") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Responsive Outdegree (SD)") + 
+  ylab("Daily Negative Affect (SD)")
+
+# does responsiveness of network predict daily stress? [YES - WEAK]
+resp_net_sd_stress_model = lm(Stress_day_avg_z ~ Responsive_Total_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_soc_perc_wb_sd, na.action=na.exclude)
+
+broom::tidy(resp_net_sd_stress_model, conf.int=TRUE)
+
+ggplot(data = fall_neg_dd_trait_data_soc_perc_wb_sd, 
+       mapping = aes(x=Responsive_Total_z, y=Stress_day_avg_z)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.2, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              color = "darkblue", 
+              size = 1) + 
+  ggtitle("Perceived Responsiveness of Network Predicts Daily Stress") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Responsive Outdegree (SD)") + 
+  ylab("Daily Stress (SD)")
+
+```
+
+Students who perceive their networks to be more responsive and who feel more socially connected tend to experience better daily well-being.
+
+
+## Is the relationship between disclosure and daily wellbeing moderated by trait loneliness?
+``` {r, echo=FALSE, include=FALSE}
+
+# does trait loneliness moderate the relationship disclosure and daily loneliness? [NO]
+lonely_mod_disc_sd_lonely_model = lm(Lonely_day_avg_pz ~ disclosure_ratio_pz*Loneliness_avg_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+broom::tidy(lonely_mod_disc_sd_lonely_model, conf.int=TRUE)
+
+# does trait loneliness moderate the relationship disclosure and daily negative affect? [NO]
+lonely_mod_disc_sd_negaff_model = lm(NegAff_day_avg_pz ~ disclosure_ratio_pz*Loneliness_avg_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+broom::tidy(lonely_mod_disc_sd_negaff_model, conf.int=TRUE)
+
+# does trait loneliness moderate the relationship disclosure and daily stress? [NO]
+lonely_mod_disc_sd_stress_model = lm(Stress_day_avg_pz ~ disclosure_ratio_pz*Loneliness_avg_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+broom::tidy(lonely_mod_disc_sd_stress_model, conf.int=TRUE)
+
+```
+
+The relationship between disclosure and daily wellbeing is not moderated by trait loneliness for any of the "negative" measures of wellbeing. This suggests that students high in trait loneliness may still benefit from disclosing their stress to peers. 
+
+
+## Is the relationship between disclosure and daily wellbeing moderated by perceived responsiveness?
+
+Does perceived responsiveness moderate the relationship between disclosure and daily loneliness?
+``` {r, echo=FALSE, include=FALSE}
+
+# NO
+perc_resp_mod_disc_sd_lonely_model = lm(Lonely_day_avg_pz ~ disclosure_ratio_pz*Responsive_Total_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+broom::tidy(perc_resp_mod_disc_sd_lonely_model, conf.int=TRUE)
+```
+
+
+Does perceived responsiveness moderate the relationship between disclosure and daily negative affect?
+``` {r, echo=FALSE, include=FALSE}
+
+# YES
+perc_resp_mod_disc_sd_negaff_model = lm(NegAff_day_avg_pz ~ disclosure_ratio_pz*Responsive_Total_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+broom::tidy(perc_resp_mod_disc_sd_negaff_model, conf.int=TRUE)
+
+# median split perceived responsiveness for simple effects model
+median_perc_resp = median(fall_neg_dd_trait_data_utility_sd$Responsive_Total_z, na.rm=TRUE)
+
+fall_neg_dd_trait_data_utility_sd$Responsive_Total_med_split = 
+  ifelse(fall_neg_dd_trait_data_utility_sd$Responsive_Total_z > median_perc_resp, 
+         'hi', 'lo')
+
+# simple effect: high perceived responsiveness [b = 0.08, NS]
+hi_perc_resp_mod_disc_sd_negaff_model = fall_neg_dd_trait_data_utility_sd %>% 
+  filter(Responsive_Total_med_split == 'hi') %>% 
+  lm(NegAff_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr,
+     data = ., na.action=na.exclude)
+
+# simple effect: low perceived responsiveness [b = -0.17, ***]
+lo_perc_resp_mod_disc_sd_negaff_model = fall_neg_dd_trait_data_utility_sd %>% 
+  filter(Responsive_Total_med_split == 'lo') %>% 
+  lm(NegAff_day_avg_pz ~ disclosure_ratio_pz + EmoRating_day_mag_ctr,
+     data = ., na.action=na.exclude)
+
+# plot negative affect as a function of disclosure grouped by perceived responsiveness
+ggplot(data = fall_neg_dd_trait_data_utility_sd, 
+       mapping = aes(x=disclosure_ratio_pz, y=NegAff_day_avg_pz)) + 
+  # add line denoting mean within a student
+  geom_hline(yintercept = 0, 
+             linetype = "dashed") + 
+  geom_point(alpha = 0.2,
+             size = 1, 
+             position  = position_jitter(width = 0.2, height = 0)) + 
+  geom_smooth(method = "lm", 
+              se = TRUE, 
+              aes(group = factor(Responsive_Total_med_split), 
+                  color = factor(Responsive_Total_med_split)),
+              size = 1) + 
+  ggtitle("Perceived Responsiveness Moderates Disclosure-Negative Affect Relationship") + 
+  # center plot title
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Rate of Disclosure (SD)") + 
+  ylab("Negative Affect (SD)") +
+  # edit legend labels
+  scale_color_discrete(name = "Perceived\nResponsiveness")
+
+```
+
+
+Does perceived responsiveness moderate the relationship between disclosure and daily stress?
+``` {r, echo=FALSE, include=FALSE}
+
+# NO
+perc_resp_mod_disc_sd_stress_model = lm(Stress_day_avg_pz ~ disclosure_ratio_pz*Responsive_Total_z + EmoRating_day_mag_ctr, data = fall_neg_dd_trait_data_utility_sd, na.action=na.exclude)
+
+broom::tidy(perc_resp_mod_disc_sd_stress_model, conf.int=TRUE)
+
+```
+
+For students who are low in perceived resonsiveness, disclosure is more tightly linked to same-day negative affect. This suggests that students who are low in perceived resposiveness may see greater relief from negative affect than their peers when disclosing their stress.
 
 ## Daily Ambient Empathy
 ``` {r, echo=FALSE, include=FALSE}
