@@ -1,0 +1,271 @@
+---
+title: "Analyses for Stanford Leadership"
+author: "Natalie Samuels"
+date: "3/15/2019"
+output: html_document
+---
+
+# What is happening with Frosh 101?
+## Compare the wellbeing and sense of belonging of students enrolled in Frosh 101 and residents of Frosh 101 houses to that of non-enrolled students and non-residents.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+
+```{r load packages, message = FALSE}
+library(broom)
+library(tidyverse)
+
+theme_set(
+  theme_classic() + #set the theme 
+    theme(text = element_text(size = 16)) #set the default text size
+)
+```
+
+
+```{r read in and concatenate wellbeing data}
+
+files = list.files(path = "de-ID_Network_Fall2018_Week9")
+df.network_data = read.csv(paste("de-ID_Network_Fall2018_Week9", files[1], sep = "/"))
+
+df.wellbeing = df.network_data %>% 
+  select(PID, DID, Wellbeing_self_17:Wellbeing_self_21, Belonging)
+
+for (file in files[-1]){
+  df.network_data = read.csv(paste("de-ID_Network_Fall2018_Week9", file, sep = "/"))
+  
+  df.wellbeing = df.network_data %>% 
+    select(PID, DID, Wellbeing_self_17:Wellbeing_self_21, Belonging) %>% 
+    rbind(df.wellbeing, .)
+}
+
+```
+
+
+```{r clean, score, and center wellbeing data}
+
+# reverse-scoring function
+fun.reverse_wellbeing = function(response) {
+  cleaned_reponse = 6 - response
+  return(cleaned_reponse)
+}
+
+fun.rescore_belonging = function(response) {
+  cleaned_reponse = response - 31
+  return(cleaned_reponse)
+}
+
+df.wellbeing = df.wellbeing %>% 
+  filter(complete.cases(.) == TRUE) %>% 
+  # reverse-score negative wellbeing measures
+  mutate_at(vars(Lonely, Stressed, Rumination, Social_Anxiety, Anxiety_1, Anxiety_2, 
+                 Depression, Anhedonia), 
+            funs(fun.reverse_wellbeing(.))) %>% 
+  # aggregate wellbeing score
+  rowwise() %>% 
+  mutate(wellbeing_avg = mean(c(Wellbeing_self_17, Lonely, Stressed, Satisfied, Rumination, 
+                                Wellbeing_self_18, Social_Anxiety, Wellbeing_self_22, 
+                                Anxiety_1, Anxiety_2, Wellbeing_self_19, Depression, 
+                                Anhedonia, Wellbeing_self_21))) %>% 
+  # rescore belonging measure
+  mutate(Belonging = fun.rescore_belonging(Belonging)) %>% 
+  # z-score wellbeing and belonging
+  ungroup() %>% 
+  mutate_at(vars(wellbeing_avg, Belonging), 
+            funs (z = scale(.))) %>% 
+  select(PID, DID, wellbeing_avg_z, Belonging_z) %>% 
+  rename(belonging_z = Belonging_z) %>% 
+  rename(Dorm = DID)
+
+df.wellbeing$Dorm = recode(df.wellbeing$Dorm, `1` = "Alondra", `2` = "Cedro", 
+                           `4` = "FroSoCo", `5` = "JRo", `7` = "Larkin", `8` = "Okada", 
+                           `9` = "Twain", `10` = "Ujamaa", `11` = "Meier", 
+                           `12` = "Naranja", `13` = "Norcliffe", `14` = "Adelfa", 
+                           `15` = "Gavilan", `16` = "Loro", `17` = "Mirlo", 
+                           `18` = "Paloma")
+
+```
+
+
+```{r read in and clean Frosh 101 data and map to wellbeing data}
+
+df.frosh101 = read.csv("frosh101_students.csv")
+
+# clean up Frosh 101 dorm names
+df.frosh101$Dorm = gsub("Meier ", "Meier", df.frosh101$Dorm)
+df.frosh101$Dorm = factor(df.frosh101$Dorm)
+
+# add students' Frosh 101 enrollment and residence info to wellbeing data frame
+df.wellbeing$enrolled = ifelse(df.wellbeing$PID %in% df.frosh101$PID, 1, 0)
+df.wellbeing$resident = ifelse(df.wellbeing$Dorm %in% df.frosh101$Dorm, 1, 0)
+
+```
+
+
+### Do Frosh 101 enrollment and residence status predict wellbeing?
+```{r wellbeing}
+
+m.wellbeing = lm(wellbeing_avg_z ~ enrolled + resident, data = df.wellbeing)
+df.wellbeing_model_components = tidy(m.wellbeing)
+df.wellbeing_model_components
+
+significant_predictors = df.wellbeing_model_components %>% 
+    with(., term[p.value < 0.05])
+
+# ENROLLMENT PLOT
+fill = ifelse("enrolled" %in% significant_predictors, "blue", "red")
+
+ggplot(data = df.wellbeing, 
+         mapping = aes(x = enrolled, 
+                       y = wellbeing_avg_z)) +
+    # add line denoting mean
+    geom_hline(yintercept = 0, 
+               linetype = "dashed") + 
+    geom_point(alpha = 0.1, 
+               position = position_jitter(height = 0, width = 0.2)) +
+    stat_summary(fun.data = "mean_cl_boot",
+                 geom = "linerange",
+                 size = 1) +
+    stat_summary(fun.y = "mean",
+                 geom = "point",
+                 size = 4, 
+                 fill = fill,
+                 color = "black",
+                 shape = 23) + 
+    # rename x axis labels
+    scale_x_continuous(limits = c(-0.5, 1.5), 
+                       breaks=c(0, 1),
+                       label=c("Not Enrolled", "Enrolled")) +
+    # set y axis title
+    ylab("Wellbeing (SD)") +
+    # center y axis on zero
+    ylim(-3.5, 3.5) + 
+    coord_flip() + 
+    ggtitle("Frosh 101 Enrollment x Wellbeing") + 
+    # center plot title
+    theme(plot.title = element_text(hjust = 0.5)) + 
+    # remove y axis title
+    theme(axis.title.y = element_blank())
+
+# RESIDENCE PLOT
+fill = ifelse("resident" %in% significant_predictors, "blue", "red")
+
+ggplot(data = df.wellbeing, 
+         mapping = aes(x = resident, 
+                       y = wellbeing_avg_z)) +
+    # add line denoting mean
+    geom_hline(yintercept = 0, 
+               linetype = "dashed") + 
+    geom_point(alpha = 0.1, 
+               position = position_jitter(height = 0, width = 0.2)) +
+    stat_summary(fun.data = "mean_cl_boot",
+                 geom = "linerange",
+                 size = 1) +
+    stat_summary(fun.y = "mean",
+                 geom = "point",
+                 size = 4, 
+                 fill = fill,
+                 color = "black",
+                 shape = 23) + 
+    # rename x axis labels
+    scale_x_continuous(limits = c(-0.5, 1.5), 
+                       breaks=c(0, 1),
+                       label=c("Non-Resident", "Resident")) +
+    # set y axis title
+    ylab("Wellbeing (SD)") +
+    # center y axis on zero
+    ylim(-3.5, 3.5) + 
+    coord_flip() + 
+    ggtitle("Frosh 101 Residence x Wellbeing") + 
+    # center plot title
+    theme(plot.title = element_text(hjust = 0.5)) + 
+    # remove y axis title
+    theme(axis.title.y = element_blank())
+
+```
+
+
+### Do Frosh 101 enrollment and residence status predict sense of belonging?
+```{r belonging}
+
+m.belonging = lm(belonging_z ~ enrolled + resident, data = df.wellbeing)
+df.belonging_model_components = tidy(m.belonging)
+df.belonging_model_components
+
+significant_predictors = df.belonging_model_components %>% 
+    with(., term[p.value < 0.05])
+
+# ENROLLMENT PLOT
+fill = ifelse("enrolled" %in% significant_predictors, "blue", "red")
+
+ggplot(data = df.wellbeing, 
+         mapping = aes(x = enrolled, 
+                       y = belonging_z)) +
+    # add line denoting mean
+    geom_hline(yintercept = 0, 
+               linetype = "dashed") + 
+    geom_point(alpha = 0.1, 
+               position = position_jitter(height = 0, width = 0.2)) +
+    stat_summary(fun.data = "mean_cl_boot",
+                 geom = "linerange",
+                 size = 1) +
+    stat_summary(fun.y = "mean",
+                 geom = "point",
+                 size = 4, 
+                 fill = fill,
+                 color = "black",
+                 shape = 23) + 
+    # rename x axis labels
+    scale_x_continuous(limits = c(-0.5, 1.5), 
+                       breaks=c(0, 1),
+                       label=c("Not Enrolled", "Enrolled")) +
+    # set y axis title
+    ylab("Sense of Belonging (SD)") +
+    # center y axis on zero
+    ylim(-3.5, 3.5) + 
+    coord_flip() + 
+    ggtitle("Frosh 101 Enrollment x Belonging") + 
+    # center plot title
+    theme(plot.title = element_text(hjust = 0.5)) + 
+    # remove y axis title
+    theme(axis.title.y = element_blank())
+
+# RESIDENCE PLOT
+fill = ifelse("resident" %in% significant_predictors, "blue", "red")
+
+ggplot(data = df.wellbeing, 
+         mapping = aes(x = resident, 
+                       y = belonging_z)) +
+    # add line denoting mean
+    geom_hline(yintercept = 0, 
+               linetype = "dashed") + 
+    geom_point(alpha = 0.1, 
+               position = position_jitter(height = 0, width = 0.2)) +
+    stat_summary(fun.data = "mean_cl_boot",
+                 geom = "linerange",
+                 size = 1) +
+    stat_summary(fun.y = "mean",
+                 geom = "point",
+                 size = 4, 
+                 fill = fill,
+                 color = "black",
+                 shape = 23) + 
+    # rename x axis labels
+    scale_x_continuous(limits = c(-0.5, 1.5), 
+                       breaks=c(0, 1),
+                       label=c("Non-Resident", "Resident")) +
+    # set y axis title
+    ylab("Sense of Belonging (SD)") +
+    # center y axis on zero
+    ylim(-3.5, 3.5) + 
+    coord_flip() + 
+    ggtitle("Frosh 101 Residence x Belonging") + 
+    # center plot title
+    theme(plot.title = element_text(hjust = 0.5)) + 
+    # remove y axis title
+    theme(axis.title.y = element_blank())
+
+```
+

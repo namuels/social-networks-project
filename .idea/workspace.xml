@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="a7ddd5c8-e944-4d69-a929-b53270154dcf" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/PIDRoster_All4Dorms.xlsx" beforeDir="false" afterPath="$PROJECT_DIR$/PIDRoster_All4Dorms.xlsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dd_trait_merge.py" beforeDir="false" afterPath="$PROJECT_DIR$/dd_trait_merge.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dd_trait_nsamuels.csv" beforeDir="false" afterPath="$PROJECT_DIR$/dd_trait_nsamuels.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dd_trait_regression.Rmd" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/de-identify_data.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/disclosure_analyses.Rmd" beforeDir="false" afterPath="$PROJECT_DIR$/disclosure_analyses.Rmd" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/network_nom_count_calcs.xls" beforeDir="false" afterPath="$PROJECT_DIR$/network_nom_count_calcs.xls" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/network_nom_counts.csv" beforeDir="false" afterPath="$PROJECT_DIR$/network_nom_counts.csv" afterDir="false" />
+    </list>
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileEditorManager">
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/dd_trait_merge.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="307">
+              <caret line="145" column="142" selection-start-line="145" selection-start-column="142" selection-end-line="145" selection-end-column="163" />
+              <folding>
+                <element signature="e#471#481#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+    </leaf>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>id_key_list</find>
+      <find>@stanford</find>
+      <find>filepath</find>
+    </findStrings>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="IdeDocumentHistory">
+    <option name="CHANGED_PATHS">
+      <list>
+        <option value="$PROJECT_DIR$/de-identify_data.py" />
+        <option value="$PROJECT_DIR$/de-id_network_data/de-identify_data.py" />
+        <option value="$PROJECT_DIR$/de-ID_Network_Data/de-identify_data.py" />
+        <option value="$PROJECT_DIR$/dd_trait_merge.py" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectFrameBounds">
+    <option name="x" value="31" />
+    <option name="y" value="27" />
+    <option name="width" value="1400" />
+    <option name="height" value="831" />
+  </component>
+  <component name="ProjectView">
+    <navigator proportions="" version="1">
+      <foldersAlwaysOnTop value="true" />
+    </navigator>
+    <panes>
+      <pane id="Scope" />
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="Data_Analysis" type="b2602c69:ProjectViewProjectNode" />
+              <item name="Data_Analysis" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="Data_Analysis" type="b2602c69:ProjectViewProjectNode" />
+              <item name="Data_Analysis" type="462c0819:PsiDirectoryNode" />
+              <item name="de-ID_Network_Data" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+    </panes>
+  </component>
+  <component name="PropertiesComponent">
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="a7ddd5c8-e944-4d69-a929-b53270154dcf" name="Default Changelist" comment="" />
+      <created>1541617755954</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1541617755954</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TodoView">
+    <todo-panel id="selected-file">
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+    <todo-panel id="all">
+      <are-packages-shown value="true" />
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+  </component>
+  <component name="ToolWindowManager">
+    <frame x="31" y="27" width="1400" height="831" extended-state="0" />
+    <layout>
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2569956" />
+      <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
+      <window_info id="Favorites" order="2" side_tool="true" />
+      <window_info anchor="bottom" id="Message" order="0" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.32929516" />
+      <window_info anchor="bottom" id="Run" order="2" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
+      <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
+      <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
+      <window_info anchor="bottom" id="TODO" order="6" weight="0.32882273" />
+      <window_info anchor="bottom" id="Version Control" order="7" weight="0.32882273" />
+      <window_info anchor="bottom" id="Terminal" order="8" weight="0.32882273" />
+      <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
+      <window_info active="true" anchor="bottom" id="Python Console" order="10" visible="true" weight="0.32882273" />
+      <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
+      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
+      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+      <window_info anchor="right" id="R Graphics" order="3" />
+      <window_info anchor="right" id="R Packages" order="4" />
+    </layout>
+  </component>
+  <component name="debuggerHistoryManager">
+    <expressions id="setValue">
+      <expression>
+        <expression-string>0             ﻿Last_Name   First_Name ...      Dorm  DID
+0             ﻿Last_Name   First_Name ...      Dorm  DID
+1                 Aceves      Abraham ...   Alondra    1
+2                Alimire       Munira ...   Alondra    1
+3                 Armour      Grayson ...   Alondra    1
+4               Ashkinos     Victoria ...   Alondra    1
+5                Axelrod        Ariel ...   Alondra    1
+6                  Ayuyo        Alvin ...   Alondra    1
+7                 Booker       Thomas ...   Alondra    1
+8                   Briz       Esther ...   Alondra    1
+9                    Bui         Hung ...   Alondra    1
+10                Canaan       Morgan ...   Alondra    1
+11             Chandaria       Nirali ...   Alondra    1
+12                  Chau    Alexandra ...   Alondra    1
+13                  Choe      Kaitlyn ...   Alondra    1
+14               Cremers       Connor ...   Alondra    1
+15                 Cross  Christopher ...   Alondra    1
+16                 D...</expression-string>
+        <language-id>Python</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+    </expressions>
+  </component>
+  <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/de-identify_data.py" />
+    <entry file="file://$PROJECT_DIR$/de-ID_Network_Data/de-identify_data.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="419">
+          <caret line="42" column="88" selection-start-line="42" selection-start-column="88" selection-end-line="42" selection-end-column="88" />
+          <folding>
+            <marker date="1548476839000" expanded="true" signature="1498:1638" ph="..." />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/de-ID_Network_Data/SN_Study_PID_NID_DID_Key_Network+DD.csv">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/dd_trait_merge.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="307">
+          <caret line="145" column="142" selection-start-line="145" selection-start-column="142" selection-end-line="145" selection-end-column="163" />
+          <folding>
+            <element signature="e#471#481#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+  </component>
+</project>

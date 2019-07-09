@@ -1,0 +1,245 @@
+---
+title: "Analyses for Stanford Leadership"
+author: "Natalie Samuels"
+date: "3/4/2019"
+output: html_document
+---
+
+# Are staff members more central in various networks?
+## Compare staff members' degree centrality to students' in all networks.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+
+```{r load packages}
+library(lme4)
+library(broom)
+library(tidyverse)
+
+theme_set(
+  theme_classic() + #set the theme 
+    theme(text = element_text(size = 16)) #set the default text size
+)
+```
+
+
+```{r read in data}
+
+df.centrality = read.csv("individual_centrality.csv")
+df.staff = read.csv("staff_roster.csv")
+df.ids = read.csv("master_id_key.csv")
+
+```
+
+
+```{r clean and merge data}
+
+df.centrality = df.centrality %>% 
+  select(Dorm, Network, PID, Degree_centrality)
+
+df.staff = df.staff %>% 
+  select(Email, Res_Staff_Ind)
+
+df.ids = df.ids %>% 
+  select(Email, PID)
+
+# map staff emails to PIDs
+df.staff = df.staff %>% 
+  left_join(., df.ids, by = "Email") %>% 
+  select(-Email)
+
+# add staff roles to centrality data frame
+df.centrality = df.centrality %>% 
+  left_join(., df.staff, by = "PID") %>% 
+  rename(role = Res_Staff_Ind) %>% 
+  select(-PID)
+
+# fill in NAs in role column with "student" and make reference level
+df.centrality$role = recode(as.character(df.centrality$role), .missing = "student")
+df.centrality$role = as.factor(df.centrality$role)
+df.centrality$role = relevel(df.centrality$role, ref = "student")
+
+# dorm- and network-center degree centrality
+df.centrality = df.centrality %>% 
+  group_by(Dorm, Network) %>% 
+  mutate(degree_centrality_dz = scale(Degree_centrality)) %>% 
+  ungroup()
+
+```
+
+
+```{r centrality plot function}
+
+fun.centrality_plot = function(network, plot_title){
+
+  model = df.centrality %>% 
+    filter(Network == network) %>% 
+    lm(degree_centrality_dz ~ role, data = .)
+  
+  df.model_components = tidy(model)
+  
+  # define groups that are statistically significant from students for plotting
+  significant_roles = df.model_components %>% 
+    with(., term[p.value < 0.05]) %>% 
+    gsub("role", "", .) %>% 
+    gsub("\\(Intercept\\)", "student", .)
+  
+  if("student" %in% significant_roles) {
+    significant_roles = significant_roles
+  }else{
+    significant_roles = significant_roles %>% 
+      c("student", .) 
+  }
+  
+  df.centrality$significance = ifelse(df.centrality$role %in% significant_roles, 1, 0)
+  
+  ggplot(data = df.centrality %>% filter(Network == network), 
+         mapping = aes(x = role, 
+                       y = degree_centrality_dz)) + 
+    # add line denoting mean within a dorm
+    geom_hline(yintercept = 0, 
+               linetype = "dashed") + 
+    geom_point(alpha = 0.1,
+                position = position_jitter(height = 0, width = 0.1)) + 
+    stat_summary(fun.data = "mean_cl_boot",
+                 geom = "linerange",
+                 size = 1) +
+    stat_summary(fun.y = "mean",
+                 geom = "point",
+                 size = 4, 
+                 aes(group = factor(significance), 
+                     fill = factor(significance)),
+                 color = "black", 
+                 shape = 23) + 
+    # rename x axis labels
+    scale_x_discrete(labels=c("student" = "Student")) + 
+    # set y axis title
+    ylab("Degree Centralilty (SD)") +
+    # center y axis on zero
+    ylim(-3, 3) + 
+    coord_flip() + 
+    ggtitle(plot_title) + 
+    # center plot title
+    theme(plot.title = element_text(hjust = 0.5)) + 
+    # remove y axis title
+    theme(axis.title.y = element_blank()) + 
+    # edit legend
+    scale_fill_discrete(name = "Significant?", 
+                         labels = c("No", "Yes"))
+}
+
+```
+
+
+### Close Friends Network
+```{r close friends network}
+
+fun.centrality_plot(network = "CloseFrds", 
+                    plot_title = "Who are your closest friends?")
+
+```
+
+
+### Time Spent Network
+```{r time spent network}
+
+fun.centrality_plot(network = "SpendTime", 
+                    plot_title = "Whom do you spend the most time with?")
+
+```
+
+
+### Advice Network
+```{r advice network}
+
+fun.centrality_plot(network = "SocAdvice", 
+                    plot_title = "Whom do you ask for advice or information?")
+
+```
+
+
+### Support Network
+```{r support network}
+
+fun.centrality_plot(network = "Responsive", 
+                    plot_title = "Who makes you feel supported and cared for?")
+
+```
+
+
+### Empathy Network
+```{r empathy network}
+
+fun.centrality_plot(network = "EmpSupp", 
+                    plot_title = "Who is the most empathetic?")
+
+```
+
+
+### Feel Good Network
+```{r feel good network}
+
+# fun.centrality_plot(network = "PosAffPres", 
+#                     plot_title = "Who usually makes you feel positive?")
+
+```
+There were no staff members with significantly higher or lower degree centrality scores in the feel good network than students.
+
+
+### Liked Network
+```{r liked network}
+
+fun.centrality_plot(network = "Liked", 
+                    plot_title = "Who is the most generally well-regarded or liked?")
+
+```
+
+
+### Good News Network
+```{r good news network}
+
+fun.centrality_plot(network = "PosEmoSupp", 
+                    plot_title = "Whom do you share good news with?")
+
+```
+
+
+### Bad News Network
+```{r bad news network}
+
+fun.centrality_plot(network = "NegEmoSupp", 
+                    plot_title = "Who do you turn to when something bad happens?")
+
+```
+
+
+### Feel Bad Network
+```{r feel bad network}
+
+fun.centrality_plot(network = "NegAffPres", 
+                    plot_title = "Who usually makes you feel negative?")
+
+```
+
+
+### Gossip Network
+```{r gossip network}
+
+# fun.centrality_plot(network = "Gossip", 
+#                     plot_title = "Who do you talk to about other people?")
+
+```
+There were no staff members with significantly higher or lower degree centrality scores in the gossip network than students.
+
+
+### Persuasion Network
+```{r persuasion network}
+
+fun.centrality_plot(network = "Persuasive", 
+                    plot_title = "Who is the most persuasive?")
+
+```
+

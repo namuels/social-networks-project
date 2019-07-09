@@ -1,0 +1,278 @@
+---
+title: "Analyses for Stanford Leadership"
+author: "Natalie Samuels"
+date: "3/6/2019"
+output: html_document
+---
+
+# What is happening with Frosh 101?
+## Compare the out-degree of students enrolled in Frosh 101 and residents of Frosh 101 houses to that of non-enrolled students and non-residents in all networks. Then, compare the density of Frosh 101 houses to that of non-Frosh 101 houses for all networks. 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+```
+
+
+```{r load packages}
+library(broom)
+library(tidyverse)
+
+theme_set(
+  theme_classic() + #set the theme 
+    theme(text = element_text(size = 16)) #set the default text size
+)
+```
+
+
+```{r read in data}
+
+df.centrality = read.csv("individual_centrality.csv")
+df.frosh101 = read.csv("frosh101_students.csv")
+df.network_based = read.csv("network_metrics.csv")
+
+```
+
+
+```{r clean and map data}
+
+# clean up Frosh 101 dorm names
+df.frosh101$Dorm = gsub("Meier ", "Meier", df.frosh101$Dorm)
+df.frosh101$Dorm = factor(df.frosh101$Dorm)
+
+# OUT-DEGREE
+# clean individual out-degree data frame
+df.out_degree = df.centrality %>% 
+  select(Dorm, Network, PID, Out_degree)
+
+df.out_degree$Dorm = gsub("Meier&Naranja", "Meier", df.out_degree$Dorm)
+df.out_degree$Dorm = gsub("Norcliffe&Adelfa", "Norcliffe", df.out_degree$Dorm)
+df.out_degree$Dorm = factor(df.out_degree$Dorm)
+
+# add students' Frosh 101 enrollment and residence info to out-degree data frame
+df.out_degree$enrolled = ifelse(df.out_degree$PID %in% df.frosh101$PID, 1, 0)
+df.out_degree$resident = ifelse(df.out_degree$Dorm %in% df.frosh101$Dorm, 1, 0)
+
+# use Frosh 101 enrollment and residence info to create student status column
+df.out_degree$status = ifelse(df.out_degree$enrolled == 1 & 
+                                df.out_degree$resident == 1, 
+                              "enrolled resident", 
+                              ifelse(df.out_degree$enrolled == 0 & 
+                                       df.out_degree$resident == 1,
+                                     "non-enrolled resident", 
+                                     ifelse(df.out_degree$enrolled == 0 & 
+                                              df.out_degree$resident == 0, 
+                                            "non-enrolled non-resident", 
+                                            ifelse(df.out_degree$enrolled == 1 & 
+                                                     df.out_degree$resident == 0, 
+                                                   "enrolled non-resident", 
+                                                   "ERROR"
+                                                   ))))
+
+# dorm- and network-center individual out-degree
+df.out_degree = df.out_degree %>% 
+  group_by(Dorm, Network) %>% 
+  mutate(out_degree_dz = scale(Out_degree)) %>% 
+  ungroup()
+
+# DENSITY
+# clean dorm network density data frame
+df.density = df.network_based %>% 
+  select(Dorm, Network_Type, Density) %>% 
+  rename(Network = Network_Type)
+
+df.density$Dorm = gsub("Meier&Naranja", "Meier", df.density$Dorm)
+df.density$Dorm = gsub("Norcliffe&Adelfa", "Norcliffe", df.density$Dorm)
+df.density$Dorm = factor(df.density$Dorm)
+
+# add dorms' Frosh 101 enrollment status to density data frame
+df.density$enrolled = ifelse(df.density$Dorm %in% df.frosh101$Dorm, 1, 0)
+
+# network-center dorm network density
+df.density = df.density %>% 
+  group_by(Network) %>% 
+  mutate(density_nz = scale(Density)) %>% 
+  ungroup()
+
+```
+
+
+```{r out-degree plot function}
+fun.out_degree_model = function(network){
+  
+  model = df.out_degree %>% 
+      filter(Network == network) %>% 
+      lm(out_degree_dz ~ enrolled + resident, data = .)
+  df.model_components = tidy(model)
+  df.model_components
+}
+
+fun.out_degree_plot = function(network, plot_title){
+  
+  model = df.out_degree %>% 
+      filter(Network == network) %>% 
+      lm(out_degree_dz ~ enrolled + resident, data = .)
+  
+  df.model_components = tidy(model)
+  
+  # define when non-enrolled students are statistically significant from enrolled
+  # students for plotting
+  significant_predictors = df.model_components %>% 
+    with(., term[p.value < 0.05])
+  
+  fill = ifelse("enrolled" %in% significant_predictors, "blue", "red")
+  
+  ggplot(data = df.out_degree %>% filter(Network == network), 
+         mapping = aes(x = enrolled, 
+                       y = out_degree_dz)) +
+    # add line denoting mean within a dorm
+    geom_hline(yintercept = 0, 
+               linetype = "dashed") + 
+    geom_point(alpha = 0.1, 
+               position = position_jitter(height = 0, width = 0.2)) +
+    stat_summary(fun.data = "mean_cl_boot",
+                 geom = "linerange",
+                 size = 1) +
+    stat_summary(fun.y = "mean",
+                 geom = "point",
+                 size = 4, 
+                 fill = fill,
+                 color = "black",
+                 shape = 23) + 
+    # rename x axis labels
+    scale_x_continuous(limits = c(-0.5, 1.5), 
+                       breaks=c(0, 1),
+                       label=c("Not Enrolled", "Enrolled")) +
+    # set y axis title
+    ylab("Out-degree (SD)") +
+    # center y axis on zero
+    ylim(-2, 3.5) + 
+    coord_flip() + 
+    ggtitle(plot_title) + 
+    # center plot title
+    theme(plot.title = element_text(hjust = 0.5)) + 
+    # remove y axis title
+    theme(axis.title.y = element_blank())
+}
+```
+
+
+### Close Friends Network
+```{r close friends network}
+
+fun.out_degree_model(network = "CloseFrds")
+fun.out_degree_plot(network = "CloseFrds", 
+                    plot_title = "Who are your closest friends?")
+
+```
+
+
+### Time Spent Network
+```{r time spent network}
+
+fun.out_degree_model(network = "SpendTime")
+fun.out_degree_plot(network = "SpendTime", 
+                    plot_title = "Whom do you spend the most time with?")
+
+```
+
+
+### Advice Network
+```{r advice network}
+
+fun.out_degree_model(network = "SocAdvice")
+fun.out_degree_plot(network = "SocAdvice", 
+                    plot_title = "Whom do you ask for advice or information?")
+
+```
+
+
+### Support Network
+```{r support network}
+
+fun.out_degree_model(network = "Responsive")
+fun.out_degree_plot(network = "Responsive", 
+                    plot_title = "Who makes you feel supported and cared for?")
+
+```
+
+
+### Empathy Network
+```{r empathy network}
+
+fun.out_degree_model(network = "EmpSupp")
+fun.out_degree_plot(network = "EmpSupp", 
+                    plot_title = "Who is the most empathetic?")
+
+```
+
+
+### Feel Good Network
+```{r feel good network}
+
+fun.out_degree_model(network = "PosAffPres")
+fun.out_degree_plot(network = "PosAffPres", 
+                    plot_title = "Who usually makes you feel positive?")
+
+```
+
+
+### Liked Network
+```{r liked network}
+
+fun.out_degree_model(network = "Liked")
+fun.out_degree_plot(network = "Liked", 
+                    plot_title = "Who is the most generally well-regarded or liked?")
+
+```
+
+
+### Good News Network
+```{r good news network}
+
+fun.out_degree_model(network = "PosEmoSupp")
+fun.out_degree_plot(network = "PosEmoSupp", 
+                    plot_title = "Whom do you share good news with?")
+
+```
+
+
+### Bad News Network
+```{r bad news network}
+
+fun.out_degree_model(network = "NegEmoSupp")
+fun.out_degree_plot(network = "NegEmoSupp", 
+                    plot_title = "Who do you turn to when something bad happens?")
+
+```
+
+
+### Feel Bad Network
+```{r feel bad network}
+
+fun.out_degree_model(network = "NegAffPres")
+fun.out_degree_plot(network = "NegAffPres", 
+                    plot_title = "Who usually makes you feel negative?")
+
+```
+
+
+### Gossip Network
+```{r gossip network}
+
+fun.out_degree_model(network = "Gossip")
+fun.out_degree_plot(network = "Gossip", 
+                    plot_title = "Who do you talk to about other people?")
+
+```
+
+
+### Persuasion Network
+```{r persuasion network}
+
+fun.out_degree_model(network = "Persuasive")
+fun.out_degree_plot(network = "Persuasive", 
+                    plot_title = "Who is the most persuasive?")
+
+```
+
