@@ -23,9 +23,10 @@ trancos_fall_data_t0.csv
 trancos_winter_data_t0.csv
 
 # Folders
-SPSP 2019 Poster Figures
-network_maps
-university_analyses
+SPSP\ 2019\ Poster\ Figures/
+network_maps/
+university_analyses/
 
 # Etc. 
-.idea
+.idea/
+Ref
